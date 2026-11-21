@@ -183,7 +183,7 @@ ax.set_xticks(range(len(q)), labels, fontsize=13)
 ax.set_ylabel("$ of every $100 in sales")
 ax.set_ylim(0, 7.8)
 header(fig, "How much of every $100 in sales is paid with loyalty points",
-       "Points are free money for the customer, so every dollar here is a dollar of profit given up.")
+       "It rose in the first year as more members reached Gold (now 69% of member spending), and has held at about $6 since.")
 save(fig, "s6_points_cost.png")
 
 # ---------------------------------------------------------------- 6. returns by points share (slide 7)
@@ -210,8 +210,10 @@ save(fig, "s6_returns.png", top=0.9)
 fig, ax = plt.subplots(figsize=(10, 6.6))
 ax.grid(axis="y", visible=False)
 ax.grid(axis="x", color=RULE)
+# Middle bar: review landmark design (decision #25): users = repaired by Sep 2025, among customers buying
+# Apr-Sep 2025; matched on age x pre-launch spend x Apr-Sep 2025 visit frequency (-15.8 pts).
 rows = [("All customers", 69.4, 69.4, NEUTRAL, "69"),
-        ("Similar customers\n(same age & spending)", 50.9, 50.9, NEUTRAL, "51"),
+        ("Similar customers\n(same age, spending\n& visits)", 15.8, 15.8, NEUTRAL, "16"),
         ("Effect of repairs alone\n(prediction model)", 5.3, 8.6, GREEN, "5 to 9")]
 for i, (lab, lo, hi, col, txt) in enumerate(rows):
     y = len(rows) - 1 - i
@@ -223,8 +225,12 @@ ax.set_yticks(range(len(rows)), [r_[0] for r_ in rows][::-1], fontsize=15, color
 ax.set_xlim(0, 80)
 ax.set_xlabel("Extra customers out of 100 who stopped shopping, without repairs")
 header(fig, "How many more customers stop shopping if they don't use repairs?",
-       "The gap shrinks once we compare like with like, but it doesn't disappear.")
-save(fig, "s7_churn_gap.png")
+       "Most of the raw gap is because repair users were already keen shoppers. What's left still\n"
+       "beats break-even: repairs pay for themselves if they keep 4.6 more customers in 100.")
+ax.axvline(4.6, color=INK, lw=1.2, ls=(0, (2, 3)))
+ax.text(5.2, 2.45, "Break-even (4.6)", color=INK2, fontsize=12)
+ax.set_ylim(-0.5, 2.6)
+save(fig, "s7_churn_gap.png", top=0.8)
 
 # ---------------------------------------------------------------- 8. turnaround (slide 8)
 t = pd.read_csv(ROOT / "results" / "c_repairs" / "c1_churn_turnaround.csv")
@@ -246,20 +252,21 @@ save(fig, "s7_turnaround.png", top=0.9)
 rev12 = visits[visits.date > C.AS_OF_DATE - pd.DateOffset(months=12)]
 points_cut = rev12.redeemed_dollars.sum() - 0.05 * rev12.revenue.sum()
 print(f"Bringing points back to 5% of sales saves ${points_cut:,.0f}")
+# Win-back: 912 lost 18-24 buyers x $429 profit per young buyer today x 50% = $195K; lost revenue x today's
+# margin x 50% = $166K; lost 18-24 ARR x margin x 50% = $154K (decision #23). Points: $0 if members cut
+# spending in step, +$62K if they don't (decision #24).
 opts = [("Close free repairs\n(leadership's plan)", -67, 57, NEUTRAL,
-         "Somewhere between \u2212$67K and +$57K:\nabout break-even"),
-        ("Bring points back to\n5% of sales", points_cut / 1e3, points_cut / 1e3, GREEN,
-         f"+${points_cut / 1e3:.0f}K"),
-        ("Win back half of the\nlost 18\u201324 shoppers", 212, 212, GREEN, "+$212K (before the cost\nof the offer)")]
+         "−$67K to +$57K: about break-even,\nwith more room to lose than to gain"),
+        ("Bring points back to\n5% of sales", 0, points_cut / 1e3, GREEN,
+         f"$0 to +${points_cut / 1e3:.0f}K, depending on\nhow members respond"),
+        ("Win back half of the\nlost 18–24 shoppers", 155, 195, GREEN,
+         "+$155K to +$195K, before\nthe cost of the offer")]
 fig, ax = plt.subplots(figsize=(14, 6.4))
 ax.grid(axis="y", visible=False)
 ax.grid(axis="x", color=RULE)
 for i, (lab, lo, hi, col, txt) in enumerate(opts):
     y = len(opts) - 1 - i
-    if lo == hi:
-        ax.barh(y, hi, 0.5, color=col)
-    else:
-        ax.barh(y, hi - lo, 0.5, left=lo, color=col, hatch="//", edgecolor=PAPER)
+    ax.barh(y, hi - lo, 0.5, left=lo, color=col, hatch="//", edgecolor=PAPER)
     ax.text(max(hi, 0) + 6, y, txt, va="center", fontsize=15, fontweight="bold", color=INK)
 ax.axvline(0, color=INK, lw=1.5)
 ax.text(2, 2.45, "No change", color=INK2, fontsize=12)
@@ -269,7 +276,7 @@ ax.set_ylim(-0.5, 2.6)
 ax.xaxis.set_major_formatter(lambda x, _: f"{'+' if x > 0 else ''}{'-' if x < 0 else ''}${abs(x):.0f}K")
 ax.set_xlabel("Change in yearly profit")
 header(fig, "What each option would do to yearly profit",
-       "Right of the line = more profit. The striped bar is a range because we can't pin it down exactly.")
+       "Right of the line = more profit. Each bar is a range because none of these can be pinned down exactly.")
 save(fig, "s8_financial.png")
 
 # ---------------------------------------------------------------- 10. method diagram (slide 4)

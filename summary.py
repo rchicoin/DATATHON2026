@@ -335,10 +335,12 @@ plt.show()
 # - **Members grew spend more than similar non-members** (+$1,110 revenue, +$609 profit per member in the year after
 #   launch, within age band × pre-launch spend quartile, customers active in both years). About 55% of the extra revenue
 #   reaches profit, the same as the store's normal margin, so points don't eat the gain. **But this is an upper bound:**
-#   joiners were already the keenest shoppers, and the churn model (D-4) finds membership has **no retention effect**
-#   once engagement is controlled (odds ratio 0.99).
-# - **The cost of points keeps rising:** $797K since launch (5.0% of revenue), $413K in the last 12 months (5.9%),
-#   up from 2.4% of revenue in the first full quarter to 5.5–6.5% in 2026.
+#   joiners were already the keenest shoppers, and the churn model (D-4) detects **no separate retention effect** of
+#   membership once engagement is controlled (odds ratio 0.99; a weak test, since 93% of revenue is from members).
+# - **The cost of points has levelled off at a structural level:** $797K since launch (5.0% of revenue), $413K in the last 12 months (5.9%),
+#   up from 2.4% of revenue in the first full quarter, flat at 5.5–6.5% since mid-2025. Balances aren't building up
+#   (only $127K outstanding); the rise came from tier mix (Gold went from 4% to 69% of member spend). Each extra
+#   0.25 pts per $ would cost about $81K a year (decision #24).
 # - **Purchases paid mostly with points are returned 2.4× as often** (24% vs ~10%).
 # - **Being close to the next tier doesn't change spending** (baskets $156–$164 at every distance), so the tier
 #   mechanic isn't driving extra spend.
@@ -394,8 +396,9 @@ plt.show()
 # Leadership says repairs "only cost money". We test that by asking whether repair users stay longer, and whether
 # what they bring in outweighs what repairs cost. Full analysis: `analysis/c_repairs/` (C-1, C-2).
 #
-# - **Repair users churn far less, even against similar customers:** 15% vs 66% for non-users of the same age band and
-#   pre-launch spend who were still buying after launch (a gap of 51 points).
+# - **Repair users churn less, even against similar customers:** the naive matched gap is 51 points (15% vs 66%),
+#   but it is inflated by timing (11% of users started too late to count as churned). A fair-timing comparison
+#   (repaired by Sep 2025; matched on age, spend and Apr–Sep 2025 visits) gives about 16 points (decision #25).
 # - **Slow repairs go with churn:** 24% churn when a user's typical turnaround is over 20 days, vs 11–13% otherwise.
 # - **Repairs cost $134K a year, but repair users hold 77% of ARR.** Scrapping them pays off only if repairs cause
 #   **less than 9%** of the churn gap (an effect under ~4.6 pts). The churn model (section 8 / D-4) puts the effect at
@@ -668,7 +671,7 @@ plt.show()
 # gap is keeping customers, not rewarding the ones who stay. **Keep free repairs:** repair users churn far less than
 # similar customers, closing them is roughly break-even on profit (between +$57K and −$67K a year, section 6), and they
 # don't cannibalize outerwear. **Don't expand loyalty as it stands:** members spend more, but mostly because the best
-# customers join; membership doesn't keep customers, points now cost ~6% of revenue and rising, and heavy-points
+# customers join; membership doesn't keep customers, points now cost a steady ~6% of revenue (set by tier mix: Gold is 69% of member spend), and heavy-points
 # purchases are returned 2.4× as often (section 5).
 
 # %%
@@ -682,8 +685,8 @@ pd.Series({
 # %% [markdown]
 # | Area | Recommendation | KPI to track (target) | Risk to watch |
 # |---|---|---|---|
-# | Repairs | Keep free repairs, with a 20-day turnaround target | Churn of repair users vs similar non-users (now 15% vs 66%); turnaround ≤ 20 days (over 20 days: 24% churn vs 11–13%) | Some of the gap is self-selection; the churn model puts the true effect near break-even (5–9 pts) |
-# | Loyalty | Redesign before expanding: reward visits and retention, not just spend; cap the share of a purchase payable in points | Profit per member after redemptions vs matched non-members; redemptions ≤ 5% of revenue (now 5.9%); tier retention | Points cost rises as balances build; membership shows no retention effect after controls |
+# | Repairs | Keep free repairs, with a 20-day turnaround target | Churn gap vs similar non-repairers, matched on age, spend and visit frequency (now about 16 pts; break-even 4.6); turnaround ≤ 20 days (over 20 days: 24% churn vs 11–13%) | Some of the gap is self-selection; the churn model puts the true effect near break-even (5–9 pts) |
+# | Loyalty | Redesign before expanding: reward visits and retention, not just spend; cap the share of a purchase payable in points | Profit per member after redemptions vs matched non-members; redemptions ≤ 5% of revenue (now 5.9%); tier retention | Points cost is structural (~7% of member revenue; each +0.25 pts/$ ≈ +$81K/yr); no separate retention effect detected after controls |
 # | Acquisition | Judge campaigns on retention, not sign-ups | 6- and 12-month return rate of new customers (Pilates: 52% vs 81%) | Campaign customers churn after the offer ends |
 # | Customer base | Win back 18–24s on the staples the competitor undercut, led by leggings | New 18–24 customers per month; active repeat customers vs pre-competitor (now 94) | A price war erodes margin; growth depends on fewer, older customers |
 #

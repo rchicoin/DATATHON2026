@@ -4,10 +4,10 @@ Consolidated on 2026-11-21 from B's first pass (`loyalty_analysis.ipynb`, notes 
 
 ## F1. Members grew spend $1,110 more than similar non-members, and 55% of it reached profit, but most of this is selection (Q4)
 - **Claim:** Among the 3,798 customers who shopped in both the 12 months before launch (Jun 2023 – May 2024) and the 12 months after, the 2,565 who joined in year 1 grew revenue **$1,110** and profit **$609** more per person than non-members of the same age band and pre-launch spend quartile. That's **55%** of the extra revenue reaching profit, about the store's normal margin (57%), so redemptions don't eat the gain. Every age band shows it (18–24 smallest: +$683 revenue).
-- **Points cost:** **$797K since launch (5.0% of revenue)**, $413K in the last 12 months (5.9%). Rising: 2.4% of revenue in Q3 2024 → 5.0% Q1 2025 → 5.5–6.5% in 2026, as balances build up.
+- **Points cost:** **$797K since launch (5.0% of revenue)**, $413K in the last 12 months (5.9%). Rose in the first year (2.4% of revenue in Q3 2024 → 5.0% in Q1 2025), then **levelled off at 5.5–6.5%**. Balances are not building up (only $127K outstanding of $923K earned); the rise came from tier mix: Gold went from 4% to 69% of member revenue, so points earned rose from 5.5% to a flat 6.9% of member revenue. Each extra 0.25 pts per $ would cost ~$81K a year (decision #24).
 - **Evidence:** `analysis/b_loyalty/b_loyalty.py`, B-1.
 - **Chart:** `results/b_loyalty/b1_matched_did.png`, `results/b_loyalty/b1_redemption_cost.png`
-- **Confidence / caveats:** low that this is caused by loyalty. Joining is a choice made by people who are already shopping more: joiners spent ~3.6× non-joiners before launch (A F11), and D's churn model finds **no retention effect of membership** once engagement is controlled (odds ratio 0.99, D F5). Treat $1,110 as an upper bound. *Replaces the first-pass comparison (below), which used "ever a member" and averaged over different customers in each year.*
+- **Confidence / caveats:** low that this is caused by loyalty. Joining is a choice made by people who are already shopping more: joiners spent ~3.6× non-joiners before launch (A F11), and D's churn model detects **no separate retention effect of membership** once engagement is controlled (odds ratio 0.99, D F5; a weak test, since 93% of revenue is from members). Treat $1,110 as an upper bound. **Robust to join timing:** early joiners only (Jun–Aug 2024) vs people who hadn't joined by May 2025, on Sep 2024 – May 2025, gives +$1,239 revenue / +$639 profit (external review, decision #26). So loyalty probably pays for its points, but no causal effect is proven. *Replaces the first-pass comparison (below), which used "ever a member" and averaged over different customers in each year.*
 - **So what for the recommendation:** loyalty isn't losing money per member, but there's no evidence that it *creates* loyalty, and its cost is growing. Expanding perks raises a cost that's already ~6% of revenue without a proven return.
 - **What capping the cost is worth:** bringing points back to the 5%-of-sales target saves about **$62K a year** of profit: $413K redeemed in the last 12 months minus 5% × $7.02M sales ($351K). This is a simple scenario that assumes sales stay the same; it's the "+$62K" bar on the deck's financial-impact slide (`slides/deck_charts.py`, chart 9).
 
@@ -16,6 +16,11 @@ Consolidated on 2026-11-21 from B's first pass (`loyalty_analysis.ipynb`, notes 
 - **Chart:** `results/b_loyalty/b2_return_rate_points.png`
 - **Confidence / caveats:** medium. Correlation only; heavy redeemers may be a different kind of shopper. Small group (2% of purchase visits).
 - **So what:** cap the share of a purchase payable in points (e.g. 50%).
+
+## F4. Returns refund the full price but never give points back (new, from external review; policy unconfirmed)
+- **Claim:** on Return rows `points_redeemed` is always 0 while earned points are clawed back; in 95.5% of member return-only visits the balance moves by exactly earned − redeemed, so redeemed points are not restored. Since launch about **$70K of points-paid value** has gone out inside refunds, $36K of it from purchases paid >50% with points. Per item, >50%-points purchases are returned **4×** as often (unit return rate 20.1% vs 5.0%), so F2 is not a basket-size artefact.
+- **Caveat:** the data can't show the store's actual refund policy. Say "the data suggests"; confirm the policy.
+- **So what:** refund the points-paid part of a purchase as points, not cash. Cheap, quick, low risk.
 
 ## F3. Being close to the next tier doesn't change what members spend (Q3)
 - **Claim:** Average basket is $156–$164 at every distance to the next tier (0–50 points away: $160; 400+: $156). Each customer's basket relative to their own average is flat too (0.98–1.02).
@@ -28,7 +33,7 @@ Consolidated on 2026-11-21 from B's first pass (`loyalty_analysis.ipynb`, notes 
 
 ---
 
-## First-pass notes (B, before consolidation)
+## First-pass notes (B, before consolidation): SUPERSEDED by F1–F3 above (decision #21); don't quote these numbers
 
 Chart 1: Basket by points-to-next-tier (B-3). The bars are essentially flat, about $155-165 across every bucket. If customers were stretching their spend to hit the next tier, baskets should be higher for people who are close (0-50 points away). They aren't. So tier proximity doesn't drive spending, and the "gamification" mechanic isn't working, at least at the basket level. This is a null result, but a useful one: the tier structure may be costing something without earning anything.
 

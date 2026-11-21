@@ -46,7 +46,8 @@ Owner: Stream C · Last updated: 2026-11-21
 - **So what for the recommendation:** If repairs stay, a turnaround target (≤20 days) is a cheap KPI that protects retention.
 - **Handed to D?** no
 
-## F1. Repair users churn 15% vs 66% for similar non-users who were still buying after launch (gap −51 points)
+## F1. Repair users churn less than similar non-users: about 16 points with fair timing (the naive matched gap of 51 points is inflated)
+- **Update (external review, decision #25):** the −51 pt gap is built partly into the definition. "Repair user" = repaired any time up to Oct 2026, and churn is measured in Oct 2026, so the 188 users (11%) whose first repair came after 4 May 2026 can't be churned by definition (user churn rises 14.7% → 16.6% without them). A landmark design (customers buying Apr–Sep 2025; users = repaired by 30 Sep 2025; purchase-visit churn on 31 Oct 2026; matched on age × pre-launch spend × Apr–Sep 2025 visit frequency; 3,478 customers, 833 users) gives: raw −33.8, matched age×spend −25.4, **matched incl. visits −15.8 pts** (16.9% vs 32.7%). Use ~16 pts as the fair matched estimate and D F5's 5–9 pts as the effect of repairs alone; −51 is the naive matched gap. The 25/50/100% what-ifs in F3 are fractions of 51 and stay appendix-only.
 - **Claim:** Among customers active in the year before launch (Apr 2024 to Mar 2025), repair users churn far less than non-users of the same age band and pre-launch spend quartile. The gap shrinks but stays large under every check.
 - **Evidence:** (cohort 6,694 customers, 1,702 of them repair users)
 
