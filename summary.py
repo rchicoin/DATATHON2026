@@ -161,9 +161,11 @@ plt.show()
 
 # %% [markdown]
 # ## 4. Competitor impact & seasonality (Stream A, slide 4)
-# The competitor's opening date isn't in the brief, so we **inferred it from the data**: March 2024, the month
-# 18–24 revenue drops sharply vs the same month a year earlier. Every comparison below uses the **same months
-# year over year**, so seasonality cancels out. Full analysis: `analysis/a_competitor/` (A-1, A-2, A-3).
+# The brief says the competitor opened "recently" but gives no date, so we **inferred it from the data**: March 2024,
+# the month 18–24 revenue drops sharply vs the same month a year earlier. Every comparison below uses the **same
+# months year over year** (e.g. Mar–Oct 2024 vs Mar–Oct 2023), so seasonal swings cancel out. Mar–Oct is used because
+# the data ends in October 2026, so it's the longest window available in every year. Full analysis, with
+# explanations of every step: the three notebooks in `analysis/a_competitor/`.
 #
 # - **The competitor took young customers, and they never came back.** 18–24 revenue fell ~45% and is still ~45% below
 #   2023; every other age band recovered and grew. The store-wide recovery comes from customers aged 25 and over.
@@ -277,7 +279,8 @@ a_new[A_AGES].rename_axis("Mar–Oct of").astype(int)
 
 # %% [markdown]
 # **Seasonality to control for.** Seasonal index = average revenue in a calendar month ÷ that row's average month × 100,
-# over Nov 2022 – Oct 2026 (every month appears 4 times). Four calculation methods agree within 6 points (A-2 notebook).
+# over Nov 2022 – Oct 2026 (every month appears 4 times). Four calculation methods agree within 6 points
+# (see `analysis/a_competitor/a2_seasonality.ipynb`).
 # Black Friday weekend and Boxing Week are the only discounts: 9 days and ~5% of yearly revenue. A sale day sells
 # ~1.4× an ordinary Nov–Dec day, so most of the December peak is full-price holiday shopping.
 # **For any before/after comparison:** loyalty launched in June (index 76) and repairs in April (82), both quiet months,
@@ -321,8 +324,129 @@ plt.show()
 
 # %% [markdown]
 # ## 6. Repairs: churn and cost vs ARR at risk, with scenarios (Stream C, slides 7-8)
+# Leadership says repairs "only cost money". We test that by asking whether repair users stay longer, and whether
+# what they bring in outweighs what repairs cost. Full analysis: `analysis/c_repairs/` (C-1, C-2).
+#
+# - **Repair users churn far less, even against similar customers:** 15% vs 66% for non-users of the same age band and
+#   pre-launch spend who were still buying after launch (a gap of 51 points).
+# - **Slow repairs go with churn:** 24% churn when a user's typical turnaround is over 20 days, vs 11–13% otherwise.
+# - **Repairs cost $134K a year, but repair users hold 77% of ARR.** Scrapping them pays off only if repairs cause
+#   **less than 9%** of the churn gap. Even at 25%, the store loses ~$366K of profit to save $134K.
+
+# %% [markdown]
+# **Who we compare.** Only customers who visited in the year before repairs launched (Apr 2024 – Mar 2025), so everyone
+# could have used repairs. Users are compared with non-users in the same age band × pre-launch spend quartile, weighted
+# by the number of users per cell. Raw churn (13% vs 77%) mostly compares engaged with lapsed customers: 56% of non-users
+# in this cohort stopped visiting *before* repairs existed. So our headline gap also requires a purchase after launch.
+# Counting purchase visits only (a pickup trip is a visit) changes the gap by less than 1 point.
 
 # %%
+c_pre = visits[visits["date"].between(C.REPAIRS_LAUNCH - pd.DateOffset(years=1),
+                                      C.REPAIRS_LAUNCH - pd.Timedelta(days=1))]
+c_cust = customers.set_index("customer_id")
+c_coh = c_cust.loc[c_pre["customer_id"].unique()].copy()
+c_coh["pre_spend"] = c_pre.groupby("customer_id")["revenue"].sum()
+c_coh["spend_q"] = pd.qcut(c_coh["pre_spend"].rank(method="first"), 4, labels=["Q1", "Q2", "Q3", "Q4"])
+c_last_buy = visits[visits["has_purchase"]].groupby("customer_id")["date"].max()
+c_coh["churned_purchase"] = (C.AS_OF_DATE - c_coh.index.map(c_last_buy)).days > C.CHURN_DAYS
+c_post = visits[(visits["date"] >= C.REPAIRS_LAUNCH) & visits["has_purchase"]]
+c_coh["post_purchases"] = c_post.groupby("customer_id").size().reindex(c_coh.index).fillna(0)
+
+
+def c_matched(d, col="churned"):
+    """Churn of users vs non-users within age band × spend quartile, weighted by users per cell."""
+    g = (d.groupby(["age_band", "spend_q", "used_repair"], observed=True)[col]
+          .agg(["mean", "size"]).unstack("used_repair").dropna())
+    w = g[("size", True)]
+    return {"Repair users": (g[("mean", True)] * w).sum() / w.sum(),
+            "Non-users": (g[("mean", False)] * w).sum() / w.sum()}
+
+
+c_still = c_coh[c_coh["post_purchases"] >= 1]
+c_churn = pd.DataFrame({
+    "Raw": c_coh.groupby("used_repair")["churned"].mean().rename({True: "Repair users", False: "Non-users"}),
+    "Matched": c_matched(c_coh),
+    "Matched, purchase visits only": c_matched(c_coh, "churned_purchase"),
+    "Matched, still buying after launch": c_matched(c_still),
+}).T[["Repair users", "Non-users"]]
+c_churn["Gap (pts)"] = c_churn["Repair users"] - c_churn["Non-users"]
+C_GAP = -c_churn.loc["Matched, still buying after launch", "Gap (pts)"]   # used in the scenarios below
+(c_churn * 100).round(1)
+
+# %%
+c_show = ["Raw", "Matched", "Matched, still buying after launch"]
+c_x = range(len(c_show))
+fig, ax = plt.subplots(figsize=(11, 4.6))
+for i, (col, colr) in enumerate([("Repair users", BLUE), ("Non-users", ORANGE)]):
+    xs = [x + (i - 0.5) * 0.36 for x in c_x]
+    ax.bar(xs, c_churn.loc[c_show, col] * 100, 0.36, color=colr, label=col)
+    for x, v in zip(xs, c_churn.loc[c_show, col] * 100):
+        ax.text(x, v + 1.5, f"{v:.0f}%", ha="center", color=INK, fontsize=10)
+ax.set_xticks(list(c_x), ["Raw", "Matched on age + pre-launch spend", "Matched, and still buying after launch"])
+ax.set_ylim(0, 100)
+ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+ax.legend(loc="upper right", frameon=False)
+ax.set_title("Repair users churn far less, even against similar customers", loc="left", color=INK, fontsize=13)
+ax.set_ylabel("Churned (no visit in 180 days)")
+fig.tight_layout()
+plt.show()
+
+# %% [markdown]
+# **Turnaround.** Each repair user's median days from drop-off to pickup (median 13 days overall, range 5–47).
+# Not matched, and users in the slowest bucket also made fewer drop-offs, so read this as a warning sign, not proof.
+
+# %%
+c_rep = load("links").query("link_type == 'repair' and resolved")
+c_days = c_rep.groupby("customer_id")["days_between"].median()
+c_turn = (c_cust.loc[c_days.index]
+          .assign(turnaround=pd.cut(c_days, [-float("inf"), 10, 20, float("inf")],
+                                    labels=["≤10 days", "11–20 days", ">20 days"]))
+          .groupby("turnaround", observed=True)
+          .agg(churn_pct=("churned", "mean"), users=("churned", "size"), avg_dropoffs=("n_repair_dropoffs", "mean")))
+c_turn["churn_pct"] *= 100
+c_turn.round(1)
+
+# %% [markdown]
+# **Cost saved vs profit at risk (scenarios).** Cost saved = repair cost in the last 12 months (Nov 2025 – Oct 2026).
+# ARR at risk = repair users' ARR × the 51-point churn gap. Profit at risk = ARR at risk × repair users' margin before
+# repair cost (repair cost is already in "cost saved"). We can't prove how much of the gap repairs *cause*, so we
+# assume 25% / 50% / 100% and solve for the break-even share. Not included: possible outerwear cannibalization.
+
+# %%
+c_since = C.AS_OF_DATE - pd.DateOffset(months=C.ARR_WINDOW_MONTHS)
+c_cost = lines.loc[lines["date"] > c_since, "repair_cost_amt"].sum()
+c_users = c_cust[c_cust["used_repair"]]
+c_uv = visits[(visits["date"] > c_since) & visits["customer_id"].isin(c_users.index)]
+c_margin = (c_uv["profit"] + c_uv["repair_cost"]).sum() / c_uv["revenue"].sum()
+c_users_arr = c_users["arr_12m"].sum()
+C_BREAK_EVEN = c_cost / (c_users_arr * C_GAP * c_margin)
+
+c_scen = pd.DataFrame({f"{s:.0%} caused by repairs": {
+    "ARR lost ($K)": c_users_arr * C_GAP * s / 1e3,
+    "Profit lost ($K)": c_users_arr * C_GAP * s * c_margin / 1e3,
+    "Repair cost saved ($K)": c_cost / 1e3,
+    "Net from scrapping ($K)": (c_cost - c_users_arr * C_GAP * s * c_margin) / 1e3,
+} for s in [0.25, 0.5, 1.0]}).T
+
+print(f"Repair cost, last 12 months: ${c_cost:,.0f} · repair users' ARR: ${c_users_arr/1e6:.2f}M "
+      f"({c_users_arr / c_cust['arr_12m'].sum():.0%} of company ARR) · margin before repair cost: {c_margin:.0%}")
+print(f"Scrapping repairs pays off only if less than {C_BREAK_EVEN:.0%} of the churn gap is caused by repairs.")
+c_scen.round(0)
+
+# %%
+c_labels = ["Cost saved\nby scrapping"] + [f"Profit lost if\n{s} is causal" for s in ["25%", "50%", "100%"]]
+c_vals = [c_cost / 1e3] + list(c_scen["Profit lost ($K)"])
+fig, ax = plt.subplots(figsize=(11, 4.6))
+ax.bar(c_labels, c_vals, 0.5, color=[BLUE] + [ORANGE] * 3)
+for x, v in enumerate(c_vals):
+    ax.text(x, v + 20, f"${v:,.0f}K", ha="center", color=INK, fontsize=10)
+ax.axhline(c_cost / 1e3, color=BLUE, lw=1.2, ls=(0, (3, 3)))
+ax.yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f"${x/1e3:.1f}M"))
+ax.set_title(f"Scrapping repairs pays off only if under {C_BREAK_EVEN:.0%} of the churn gap is caused by repairs",
+             loc="left", color=INK, fontsize=13)
+ax.set_ylabel("Per year")
+fig.tight_layout()
+plt.show()
 
 # %% [markdown]
 # ## 7. Pilates campaign (Stream D, slide 9)
@@ -377,16 +501,27 @@ plt.show()
 
 # %% [markdown]
 # ## 8. Recommendation, KPIs & risks (Stream D, slide 10)
-# *To fill after the 2:00 check-in, from every stream's `results/<stream>/findings.md`.*
+# *DRAFT before the 2:00 check-in. Repairs and loyalty rows to confirm with C-2 and B-1.*
 #
-# **Recommendation:** [one line]
-#
+# **Answer:** not as planned. Revenue recovered from fewer, older customers spending more (section 3, A), so the
+# gap is keeping customers, not rewarding the ones who stay. Fix loyalty's profit before expanding it, and don't
+# scrap repairs until C-2 shows the cost saved beats the ARR at risk.
+
+# %%
+since_launch = visits[visits["date"] >= C.LOYALTY_LAUNCH]
+pd.Series({
+    "Store profit margin since loyalty launch (%)": since_launch["profit"].sum() / since_launch["revenue"].sum() * 100,
+    "Redeemed points since launch ($)": since_launch["redeemed_dollars"].sum(),
+    "Redeemed points as share of revenue (%)": since_launch["redeemed_dollars"].sum() / since_launch["revenue"].sum() * 100,
+}).round(1)
+
+# %% [markdown]
 # | Area | Recommendation | KPI to track (target) | Risk to watch |
 # |---|---|---|---|
-# | Repairs | [keep / scrap / fix turnaround, from C-2] | [churn of repair users vs non-users; turnaround ≤ __ days] | [repair cost growing faster than retained ARR] |
-# | Loyalty | [expand / redesign, from B-1] | [profit per member after redemptions; redemption cost ≤ __% of revenue] | [points-funded purchases returned more (B-2)] |
+# | Repairs | Keep for now; scrap only if C-2 shows cost saved beats ARR at risk | Churn of repair users vs similar non-users; turnaround ≤ [__] days | Repair cost grows faster than the ARR it keeps |
+# | Loyalty | Redesign before expanding: reward visits and retention, not just spend | Profit per member after redemptions; redemptions ≤ [__]% of revenue (now 5.0%) | Extra member revenue reaches profit at about half the normal rate |
 # | Acquisition | Judge campaigns on retention, not sign-ups | 6- and 12-month return rate of new customers (Pilates: 52% vs 81%) | Campaign customers churn after the offer ends |
-# | Customer base | [win back 18–24s, from A-1] | ARR and active repeat customers vs pre-competitor level (now 94) | Growth depends on fewer, older customers spending more |
+# | Customer base | Win back 18–24s on the staples the competitor undercut, led by leggings | New 18–24 customers per month; active repeat customers vs pre-competitor (now 94) | A price war erodes margin; growth depends on fewer, older customers |
 #
 # **Limitations:** members and repair users choose to take part, so matched comparisons reduce but don't remove
 # selection bias; ARR lags real changes by up to 12 months; the data has no campaign or program running costs
