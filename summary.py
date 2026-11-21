@@ -81,7 +81,7 @@ customer_month = load("customer_month")
 print(f"{len(lines):,} lines · {len(visits):,} visits · {len(customers):,} customers")
 
 # %% [markdown]
-# ## 3. ARR over time (Stream D, slide 3)
+# ## 3. ARR over time (Stream D, slide 4)
 # ARR fell for a year after the competitor opened, then recovered to a new high. Plotted from Nov 2023, the first
 # month with a full 12 months of history. ARR is a rolling total, so it lags real changes by up to a year.
 
@@ -160,7 +160,7 @@ fig.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 4. Competitor impact & seasonality (Stream A, slide 4)
+# ## 4. Competitor impact & seasonality (Stream A, slide 5)
 # The competitor opened on **15 March 2024**, and sales to young shoppers dropped that same day: 18–24 year-olds spent
 # normally on 1–14 March (+2% vs the same days of 2023), then 50% less on 15–31 March.
 #
@@ -329,7 +329,7 @@ fig.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 5. Loyalty program: revenue vs profit, points-funded returns (Stream B, slides 5-6)
+# ## 5. Loyalty program: revenue vs profit, points-funded returns (Stream B, slide 6)
 # Leadership credits loyalty for the recovery and wants to expand it. Full analysis: `analysis/b_loyalty/b_loyalty.py`.
 #
 # - **Members grew spend more than similar non-members** (+$1,110 revenue, +$609 profit per member in the year after

@@ -1,7 +1,7 @@
 """Deck-style versions of Stream B's charts (slides 5-6).
 
 Plotting only: every number below is copied from the printed outputs of
-results/b_loyalty/loyalty_analysis.ipynb (Aisyah, Stream B). Nothing is recomputed.
+analysis/b_loyalty/loyalty_analysis.ipynb (Aisyah, Stream B). Nothing is recomputed.
 Run from the repo root:  python analysis/d_customers_arr/deck_b_charts.py
 """
 from pathlib import Path

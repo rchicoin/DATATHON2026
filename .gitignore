@@ -2,7 +2,7 @@
 data/processed/*
 !data/processed/.gitkeep
 !data/processed/lululime_clean.csv.gz
-# tables written by analysis/lululime_analysis.ipynb
+# tables written by the original cleaning notebook (removed; superseded by src/)
 clean/
 
 # personal scratch work stays local

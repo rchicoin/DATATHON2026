@@ -1,6 +1,6 @@
 # Findings — Loyalty program
 
-Consolidated on 2026-11-21 from B's first pass (`loyalty_analysis.ipynb`, notes kept below) into `analysis/b_loyalty/b_loyalty.py`, which uses the shared `load()` table. B-2 and B-3 numbers are identical to the first pass. B-1 changed method (see F1). Charts in `results/b_loyalty/`.
+Consolidated on 2026-11-21 from B's first pass (`analysis/b_loyalty/loyalty_analysis.ipynb`, notes kept below) into `analysis/b_loyalty/b_loyalty.py`, which uses the shared `load()` table. B-2 and B-3 numbers are identical to the first pass. B-1 changed method (see F1). Charts in `results/b_loyalty/`.
 
 ## F1. Members grew spend $1,110 more than similar non-members, and 55% of it reached profit, but most of this is selection (Q4)
 - **Claim:** Among the 3,798 customers who shopped in both the 12 months before launch (Jun 2023 – May 2024) and the 12 months after, the 2,565 who joined in year 1 grew revenue **$1,110** and profit **$609** more per person than non-members of the same age band and pre-launch spend quartile. That's **55%** of the extra revenue reaching profit, about the store's normal margin (57%), so redemptions don't eat the gain. Every age band shows it (18–24 smallest: +$683 revenue).

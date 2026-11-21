@@ -12,7 +12,7 @@
 
 # %% [markdown]
 # # B · Loyalty program: revenue vs profit, points-funded returns, behaviour near the next tier (Q3, Q4, Q5)
-# Consolidated version of `results/b_loyalty/loyalty_analysis.ipynb`, rebuilt on the shared table (`load()`) with the
+# Consolidated version of `analysis/b_loyalty/loyalty_analysis.ipynb`, rebuilt on the shared table (`load()`) with the
 # agreed definitions. Two changes from the first pass:
 # 1. **B-1 is now a matched difference-in-differences.** The first pass compared "ever a member" with everyone else,
 #    averaged over whoever happened to shop in each year. Here we keep only customers who shopped in **both** the 12

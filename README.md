@@ -47,9 +47,9 @@ One file: `data/processed/lululime_clean.csv.gz`. It's sales + items + customers
 Columns include joined item and customer fields, `revenue`, `production_cost_amt`, `repair_cost_amt`, `redeemed_dollars`, `profit`, `is_repeat_visit` and `month`.
 Visits, customers, ARR, churn and repair turnaround come from the cheat sheet in `SPRINT_CONTEXT.md`.
 
-## Cleaning notebook (`analysis/lululime_analysis.ipynb`)
+## Cleaning history
 
-Aylin's first pass at cleaning and joining, which writes CSVs to `analysis/clean/` (gitignored). It follows the same core rules as `src/`. It also adds features that `src/` doesn't have yet: categories for the `notes` text, Black Friday and Boxing Week flags, a repair status (open or abandoned) with turnaround, `pre_window_signup`, and a switch to write off defective returns. These will move into `src/` so every stream gets them. Where her notebook and `src/` disagree, see `docs/decisions_log.md` (#12–15).
+Aylin's first-pass cleaning notebook was folded into `src/` (differences resolved in `docs/decisions_log.md` #12–15) and removed; it's still in git history.
 
 ## Team rules
 
