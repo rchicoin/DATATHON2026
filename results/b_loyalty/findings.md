@@ -17,3 +17,5 @@ Owner: _name_ · Branch: `b_loyalty` · Last updated: _YYYY-MM-DD_
 
 ## Decisions needed (also log them in `docs/decisions_log.md`)
 -
+
+
