@@ -161,8 +161,8 @@ plt.show()
 
 # %% [markdown]
 # ## 4. Competitor impact & seasonality (Stream A, slide 4)
-# The brief says the competitor opened "recently" but gives no date, so we **inferred it from the data**: March 2024,
-# the month 18–24 revenue drops sharply vs the same month a year earlier. Every comparison below uses the **same
+# The competitor opened on **15 March 2024**, and the data shows the hit the same day: 18–24 revenue was normal on
+# 1–14 March (+2% vs the same days of 2023), then fell 50% on 15–31 March. Every comparison below uses the **same
 # months year over year** (e.g. Mar–Oct 2024 vs Mar–Oct 2023), so seasonal swings cancel out. Mar–Oct is used because
 # the data ends in October 2026, so it's the longest window available in every year. Full analysis, with
 # explanations of every step: the three notebooks in `analysis/a_competitor/`.

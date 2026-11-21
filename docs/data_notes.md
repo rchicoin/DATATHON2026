@@ -54,3 +54,13 @@ Total revenue after dedup: **$26,204,614.30**
 - Sales start 2022-11-01, but `signup_date` goes back to 2018-03-01. For the 9,611 customers who signed up on or after 2022-11-01, the first visit in the data equals `signup_date` in 100% of cases.
 - Customers who signed up before the data window have no "first visit" in the data, and `first_visit` is just the first one we can see.
 - `tier_at_purchase` has mixed types in pandas' default CSV reader. `src/clean.py` reads it as a string.
+
+## Loyalty membership: checked against the data
+The organisers' rules (see `definitions.md`, "Loyalty program") hold in the data (sales deduplicated):
+| Check | Result |
+|---|---|
+| `tier_at_purchase` and points blank before 2024-06-01 | 100% of pre-launch rows; never blank after launch |
+| Rows after launch but before the customer's `loyalty_join_date` (or never joined) | 24,646 rows, **all** `Non-member`, **no** points earned or redeemed |
+| Rows on or after the join date | `Member` 47,103 · `Silver` 42,421 · `Gold` 107,236 · `Non-member` 10 |
+| Those 10 `Non-member` rows | All on the join day itself (the customer likely joined at the till after paying). Harmless |
+| Join dates | Earliest 2024-06-01; every join date is a day the customer shopped; 2,201 of 6,718 members joined on their very first visit |

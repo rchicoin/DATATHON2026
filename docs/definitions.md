@@ -33,6 +33,20 @@ These values are implemented in `src/config.py`. If you change one there, change
 
 `metrics.period(dates)` labels each date with the most recent event before it.
 
+## Loyalty program: who is a member, and when
+These rules come from the case organisers and are **checked against the data** (see `data_notes.md`):
+1. **Before 2024-06-01 (launch):** the program didn't exist. `tier_at_purchase` is blank, and there are no points. `src/` labels these rows `Pre-loyalty` (never "Non-member").
+2. **After launch, everyone starts as a `Non-member`.** A customer becomes a member only on their `loyalty_join_date` (in `customers.csv`). From that visit on, their tier is `Member`, `Silver` or `Gold`. Customers join in store: every join date is a day they shopped.
+3. **Points are only collected after joining.** Non-member purchases earn no points and can't redeem any (`src/` sets their points to 0).
+
+**Watch out: `is_member` is not "member at the time of this purchase".** It means "joined at some point by Oct 2026", a fixed property of the customer. Someone who joined in 2026 has `is_member = True` on their 2024 purchases too. For anything time-based, use membership **at the visit**:
+```python
+member_at_visit = df["loyalty_join_date"].notna() & (df["date"] >= df["loyalty_join_date"])
+# or, equivalently, from the tier recorded at the visit:
+member_at_visit = df["tier_at_purchase"].isin(["Member", "Silver", "Gold"])
+```
+**Comparing members with non-members:** because joining happens during a visit, everyone who joined was, by definition, still shopping after launch, while many non-members had simply stopped shopping. Compare customers who were **active in both periods**, or the comparison mostly measures "kept shopping vs stopped".
+
 ## Loyalty tiers
 - Members earn 1 pt/$. Silver earns 1.25 pts/$ and Gold 1.5 pts/$.
 - Thresholds: **Silver 600, Gold 2000** points earned over the trailing 365 days, checked at each visit.
