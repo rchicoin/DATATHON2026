@@ -4,6 +4,15 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 
 <!-- Add a finding as soon as you have it. Copy this block for each one. Newest at the top. -->
 
+## F3. The Pilates campaign brought short-term shoppers, not long-term customers (Q7)
+- **Claim:** Among customers who signed up in the same weeks (Jan 6 – Mar 31, 2025), only **52%** of the 360 Pilates-campaign customers came back within a year, vs **81%** from other channels. **47%** never made a second visit (vs 17%), and **64%** made their last visit during the campaign itself (vs 23%). By month 12, 5% visit in a given month vs 22%. They're now **90% churned** (vs 60%). In their first year they spent **$368** each (vs $842) and made **$226** profit (vs $496). Today they contribute **$53K of ARR** ($148 per customer vs $591).
+- **Who they were:** similar ages (57% aged 18–34 vs 53%), all Pilates-interested, fewer loyalty members (56% vs 72%). 40% of their spend went on Pilates products (vs 11%). They came for the campaign's Pilates offer and didn't move into the rest of the range.
+- **Evidence:** `analysis/d_customers_arr/d2_pilates.ipynb`, sections 1–5.
+- **Chart:** `results/d_customers_arr/d2_pilates_retention.png` (slide 9)
+- **Confidence / caveats:** high. Same signup weeks, so season and store conditions match. The data has no campaign cost, so this is value delivered, not ROI. Comparison customers chose to come in on their own, which naturally makes them a more engaged group.
+- **So what for the recommendation:** acquisition campaigns aren't what drives ARR. Retaining existing customers is. Future campaigns should be judged on 6- and 12-month retention, not sign-ups (a KPI for slide 10). This also supports the case for keeping retention programs like repairs, pending C.
+- **Handed to D?** yes (own stream)
+
 ## F2. The recovery is bigger spend from fewer customers, not customers coming back
 - **Claim:** Compared with the same months in the year before the competitor (Mar 2023 – Feb 2024), repeat revenue went −12% (year 1) → +1% (year 2) → **+10% (Mar–Oct 2026)**. Active repeat customers are still **5% below** pre-competitor levels, while revenue per active repeat customer is **+17%**. Revenue started recovering right after loyalty launched (index 75 in Jun 2024 → 95 by Dec 2024). Customer counts recovered more slowly, and mostly after the Pilates push and free repairs (2025).
 - **Evidence:** `analysis/d_customers_arr/d1_arr.ipynb`, section 2 (recovery table and index chart).
