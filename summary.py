@@ -25,8 +25,7 @@ from src.metrics import load, company_arr, churn_rate, period
 
 # %%
 # from src.tables import build_all; build_all()   # uncomment to rebuild and show the checks
-lines, visits, customers = load("lines"), load("visits"), load("customers")
-customer_month, links = load("customer_month"), load("links")
+df = load()   # one joined table; build visits / customers / ARR with the SPRINT_CONTEXT.md cheat sheet
 
 # %% [markdown]
 # ## 3. ARR over time (Stream D, slide 3)

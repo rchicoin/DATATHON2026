@@ -12,9 +12,54 @@ Deliverables: **at most 10 content slides** and **one notebook** (`summary.py` �
 git pull
 pip install -r requirements.txt
 nbstripout --install
-python -c "from src.metrics import load; print(load('visits').shape)"   # builds tables if missing
+python -c "from src.metrics import load; print(load().shape)"   # (350998, 40)
 ```
-Tables: `lines`, `visits`, `customers`, `customer_month`, `links`. Columns are listed in `README.md`.
+
+## The data: one joined table
+`data/processed/lululime_clean.csv.gz` is **sales + items + customers joined and cleaned**: one row per sales line, 350,998 rows × 40 columns. Excel users can unzip it.
+- Each row is one item line in a transaction: a Purchase, Return, Repair Drop-off or Repair Pickup (`row_type`).
+- Ready-made columns: `revenue` (qty × price), `production_cost_amt`, `repair_cost_amt` (drop-offs only), `redeemed_dollars` (points/20), `profit`, `is_repeat_visit`, `month`, `is_member`, `interest_*`.
+- Load it in Python with `from src.metrics import load; df = load()` (IDs as text, dates parsed).
+
+## Cheat sheet: same definitions for everyone
+Copy these instead of writing your own, so every stream gets the same numbers (checked: ARR $6.67M, repair churn 13% vs 77%).
+```python
+import pandas as pd
+from src.metrics import load
+from src import config as C
+df = load()
+
+# Visits (baskets): one row per transaction
+visits = df.groupby("transaction_id").agg(
+    customer_id=("customer_id", "first"), date=("date", "first"), month=("month", "first"),
+    revenue=("revenue", "sum"), profit=("profit", "sum"),
+    redeemed_dollars=("redeemed_dollars", "sum"), is_repeat_visit=("is_repeat_visit", "first"),
+).reset_index()
+
+# Customers: one row per customer, with churn and ARR as of 2026-10-31
+customers = (df[["customer_id", "signup_date", "age_band", "home_area", "acquisition_channel", "is_member"]]
+             .drop_duplicates("customer_id").set_index("customer_id"))
+customers["last_visit"] = visits.groupby("customer_id")["date"].max()
+customers["churned"] = (C.AS_OF_DATE - customers["last_visit"]).dt.days > C.CHURN_DAYS
+since = C.AS_OF_DATE - pd.DateOffset(months=12)
+rep = visits[visits["is_repeat_visit"] & (visits["date"] > since)]
+customers["arr_12m"] = rep.groupby("customer_id")["revenue"].sum()
+customers["arr_12m"] = customers["arr_12m"].fillna(0)
+customers["first_repair_date"] = df[df["row_type"] == C.DROPOFF].groupby("customer_id")["date"].min()
+customers["used_repair"] = customers["first_repair_date"].notna()
+
+# Company ARR by month (plot from Nov 2023)
+arr = visits[visits["is_repeat_visit"]].groupby("month")["revenue"].sum().rolling(12, min_periods=1).sum()
+
+# Repair turnaround: pickup matched to its drop-off on transaction_id + item_id
+drop = df[df["row_type"] == C.DROPOFF][["transaction_id", "item_id", "date"]].drop_duplicates(["transaction_id", "item_id"])
+pick = df[df["row_type"] == C.PICKUP][["customer_id", "original_transaction_id", "item_id", "date"]]
+repairs = pick.merge(drop, left_on=["original_transaction_id", "item_id"],
+                     right_on=["transaction_id", "item_id"], suffixes=("_pickup", "_dropoff"))
+repairs["turnaround_days"] = (repairs["date_pickup"] - repairs["date_dropoff"]).dt.days
+```
+Returns link to their purchase the same way: `row_type == "Return"`, matched on `original_transaction_id` + `item_id`.
+In the plan docs, `visits`, `customers` and `links` mean the tables built with this cheat sheet.
 
 ## Timeline
 | Time | What |

@@ -7,6 +7,7 @@
 - **D-3 Must (from 2:10):** KPI table (Q10), recommendation, slides 1/2/3/9/10, and running `summary.py` end to end.
 
 ## Tables you use
+All of these come from the one joined table (`df = load()`) via the cheat sheet in `SPRINT_CONTEXT.md`. `lines` = `df` itself.
 - `customer_month`: `arr_12m`, `active`, `churned` per month. `metrics.company_arr()`.
 - `customers`: `acquisition_channel` (Pilates Campaign), `interest_pilates`, `first_visit`, `n_visits`, `churned`.
 - `visits`: `is_repeat_visit`.

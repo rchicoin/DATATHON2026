@@ -1,6 +1,7 @@
 # generated data — rebuild with: python -m src.tables
 data/processed/*
 !data/processed/.gitkeep
+!data/processed/lululime_clean.csv.gz
 # tables written by analysis/lululime_analysis.ipynb
 clean/
 

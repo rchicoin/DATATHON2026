@@ -1,4 +1,6 @@
-"""Build the 5 shared tables and write them to data/processed/*.parquet.
+"""Clean + join the raw CSVs, run the integrity checks, and write ONE file:
+data/processed/lululime_clean.csv.gz (the joined table, one row per sales line).
+The other tables below are built in memory only, for the checks.
 
     python -m src.tables
 
@@ -194,9 +196,8 @@ def build_all(write: bool = True) -> dict:
 
     if write:
         C.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-        for name, df in tables.items():
-            df.to_parquet(C.PROCESSED_DIR / f"{name}.parquet", index=False)
-        print(f"\nWrote {len(tables)} tables to {C.PROCESSED_DIR.relative_to(C.ROOT)}/")
+        lines.to_csv(C.CLEAN_CSV, index=False, compression="gzip")
+        print(f"\nWrote {C.CLEAN_CSV.relative_to(C.ROOT)} ({len(lines):,} rows)")
     return tables
 
 
@@ -206,7 +207,7 @@ def _ok(cond: bool, msg: str):
 
 
 def run_checks(raw_sales, sales, t) -> None:
-    lines, visits, cust, cm, links = (t[k] for k in C.TABLES)
+    lines, visits, cust, cm, links = (t[k] for k in ["lines", "visits", "customers", "customer_month", "links"])
     rev_pre = (sales["quantity"] * sales["unit_price_paid"]).sum()
     results = []
 

@@ -8,6 +8,7 @@
 - Slides: 5, 6.
 
 ## Tables you use
+All of these come from the one joined table (`df = load()`) via the cheat sheet in `SPRINT_CONTEXT.md`. `lines` = `df` itself.
 - `visits`: `tier`, `points_earned`, `points_redeemed`, `redeemed_dollars`, `points_balance_after` (never sum it), `profit`.
 - `customer_month`: `tier_last_seen` (forward-filled; lapsed members never show a lower tier), `active`, `arr_12m`.
 - `links` (`link_type == "return"`): returns joined to the original purchase visit, to get its redeemed $.

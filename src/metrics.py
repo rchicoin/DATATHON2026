@@ -1,7 +1,7 @@
 """Shared loaders and metric helpers. Import these in every notebook:
 
     from src.metrics import load
-    visits = load("visits")
+    df = load()      # the joined table: one row per sales line
 
 Helpers implement the agreed definitions in docs/definitions.md — use them
 instead of re-deriving a metric so every stream gets the same number.
@@ -10,16 +10,17 @@ import pandas as pd
 
 from src import config as C
 
+DATE_COLS = ["date", "datetime", "signup_date", "loyalty_join_date", "month"]
+ID_COLS = {"transaction_id": str, "customer_id": str, "item_id": str,
+           "original_transaction_id": str, "tier_at_purchase": str}
 
-def load(name: str) -> pd.DataFrame:
-    """Load a shared table from data/processed/. Builds all tables if missing."""
-    if name not in C.TABLES:
-        raise ValueError(f"unknown table {name!r}; choose from {C.TABLES}")
-    path = C.PROCESSED_DIR / f"{name}.parquet"
-    if not path.exists():
+
+def load() -> pd.DataFrame:
+    """Load the cleaned, joined table (data/processed/lululime_clean.csv.gz). Builds it if missing."""
+    if not C.CLEAN_CSV.exists():
         from src.tables import build_all
         build_all()
-    return pd.read_parquet(path)
+    return pd.read_csv(C.CLEAN_CSV, dtype=ID_COLS, parse_dates=DATE_COLS)
 
 
 def profit(revenue, production_cost, repair_cost, points_redeemed):

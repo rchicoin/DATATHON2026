@@ -68,5 +68,6 @@ ROW_TYPES = [PURCHASE, RETURN, DROPOFF, PICKUP]
 # --- Customer interests (split into 0/1 columns interest_<name>) ---------------
 INTERESTS = ["Run", "Yoga", "Pilates", "Outdoor", "Lifestyle"]
 
-# --- Parquet outputs -----------------------------------------------------------
-TABLES = ["lines", "visits", "customers", "customer_month", "links"]
+# --- Shared output ---------------------------------------------------------------
+# The ONE cleaned, joined dataset everyone starts from (one row per sales line).
+CLEAN_CSV = PROCESSED_DIR / "lululime_clean.csv.gz"

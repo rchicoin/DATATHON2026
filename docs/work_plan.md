@@ -3,7 +3,7 @@
 **The question:** Should leadership scrap free repairs and expand loyalty? We answer it with **ARR** and **profit**.
 **What we hand in:** at most 10 content slides (`slides/`) and one notebook (`summary.py` → `summary.ipynb`).
 
-The shared tables (`lines`, `visits`, `customers`, `customer_month`, `links`) are **already built and frozen**.
+The shared dataset is **one joined table**, `data/processed/lululime_clean.csv.gz`, and it is frozen. Build visits, customers, ARR and churn from it with the cheat sheet in `SPRINT_CONTEXT.md`.
 Nobody cleans data in the next 4 hours. Everyone starts analysing at minute 15.
 
 ## The story we are building (one sentence per slide)
@@ -27,7 +27,7 @@ Every slide has **one chart and one headline number**. If a finding doesn't fit 
 
 | Time | Everyone | Output |
 |---|---|---|
-| **0:00–0:15** | Pull `main`, `pip install -r requirements.txt`, check `load("visits")` works. Read your section in `who_answers_what.md`. D puts the 10 slide titles in the deck with placeholders. | Everyone can load data |
+| **0:00–0:15** | Pull `main`, `pip install -r requirements.txt`, check `load()` works. Read your section in `who_answers_what.md`. D puts the 10 slide titles in the deck with placeholders. | Everyone can load data |
 | **0:15–2:00** | **Must-haves only.** Work in `analysis/<stream>/`. Save each chart to `results/<stream>/` as a PNG. | 2 must-have charts per person |
 | **2:00–2:10** | **Check-in.** Each person reads out their headline numbers. D writes them into the slides. Agree on the recommendation direction. | Draft answer |
 | **2:10–3:00** | Finish any missing must-haves first. Then do should-haves. Write `results/<stream>/findings.md`. | Findings written |

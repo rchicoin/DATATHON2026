@@ -8,6 +8,7 @@
 - Slide: 4.
 
 ## Tables you use
+All of these come from the one joined table (`df = load()`) via the cheat sheet in `SPRINT_CONTEXT.md`. `lines` = `df` itself.
 - `lines`: category, activity, season, revenue by date. Customer demographics are already joined.
 - `visits`: visit counts and revenue over time.
 - `customers`: `age_band`, `home_area`, `acquisition_channel`, `interest_*`.

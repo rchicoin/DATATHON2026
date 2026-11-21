@@ -8,6 +8,7 @@
 - Slides: 7, 8.
 
 ## Tables you use
+All of these come from the one joined table (`df = load()`) via the cheat sheet in `SPRINT_CONTEXT.md`. `lines` = `df` itself.
 - `lines`: `repair_cost_amt` (drop-offs only; pickups are $0), R01 outerwear / R02 activewear, and Outerwear category sales.
 - `links` (`link_type == "repair"`): Pickup → Drop-off, `days_between` = turnaround. 259 drop-offs were never picked up.
 - `customers`: `used_repair`, `n_repair_dropoffs`, `first_repair_date`, `churned`, `arr_12m`.

@@ -3,7 +3,7 @@
 Case: Lululime (Vancouver athleisure store). Should leadership scrap free repairs and expand loyalty? Answer through ARR and profit. Brief: `docs/Lululime_Datathon_Case.pdf`.
 Plan: `docs/work_plan.md` and `docs/who_answers_what.md`. Definitions: `docs/definitions.md`. Data quirks: `docs/data_notes.md`. Decisions: `docs/decisions_log.md`.
 
-**Always load data via `src/`, never re-clean in notebooks:** `from src.metrics import load; load("visits")`. Constants and dates come from `src/config.py`, never hard-coded. Rebuild the tables with `python -m src.tables`.
+**Always load data via `src/`, never re-clean in notebooks:** `from src.metrics import load; df = load()`. This is the ONE shared dataset, `data/processed/lululime_clean.csv.gz` (sales+items+customers joined, one row per sales line). Derive visits/customers/ARR/churn/repair links with the cheat sheet in `SPRINT_CONTEXT.md`. Constants and dates come from `src/config.py`, never hard-coded. Rebuild the CSV with `python -m src.tables`.
 
 Cleaning rules (implemented in `src/clean.py` + `src/tables.py`):
 - Join sales → items → customers, LEFT, `validate="many_to_one"`, IDs as strings. Grain = one row per sales line.

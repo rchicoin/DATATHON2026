@@ -1,7 +1,7 @@
 # Who answers what (4-hour version)
 
 Each person has **2 must-haves** (done by the 2:00 check-in), then 1–2 should-haves if time allows. Everything marked **Cut** is out of scope; mention it as a limitation if it matters.
-The timeline and slide outline are in `work_plan.md`. Every method below uses only the shared tables and `src.config`.
+The timeline and slide outline are in `work_plan.md`. Every method below starts from the one joined table (`df = load()`). `visits`, `customers`, `links` and the ARR series are built with the cheat sheet in `SPRINT_CONTEXT.md`, so everyone uses the same definitions.
 
 ## Overview
 
@@ -87,7 +87,7 @@ Owns the shared ARR number, the storyline, and the final recommendation.
 **D-0. Slide skeleton · 15 min · Must, at 0:00.** Put the 10 slide titles from `work_plan.md` into the deck with placeholders for each owner.
 
 **D-1. ARR over time · 30 min · Must**
-- Data: `customer_month` + `metrics.company_arr()`. Plot from Nov 2023 (the first month with a full 12 months of history).
+- Data: the `arr` series from the cheat sheet. Plot from Nov 2023 (the first month with a full 12 months of history).
 - Method: total ARR by month; split by `customers.is_member` and `customers.used_repair`. Mark `C.EVENTS` as vertical lines.
 - Output: an ARR line with the initiatives marked (slide 3; this is the backbone of the story).
 
