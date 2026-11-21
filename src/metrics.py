@@ -15,12 +15,32 @@ ID_COLS = {"transaction_id": str, "customer_id": str, "item_id": str,
            "original_transaction_id": str, "tier_at_purchase": str}
 
 
-def load() -> pd.DataFrame:
-    """Load the cleaned, joined table (data/processed/lululime_clean.csv.gz). Builds it if missing."""
+def load(name: str = "lines") -> pd.DataFrame:
+    """Load the cleaned, joined table (data/processed/lululime_clean.csv.gz). Builds it if missing.
+
+    load() / load("lines") -> the joined table, one row per sales line.
+    load("visits" | "customers" | "customer_month" | "links") -> built from that
+    same CSV with the shared definitions in src/tables.py (nothing extra on disk).
+    """
     if not C.CLEAN_CSV.exists():
         from src.tables import build_all
         build_all()
-    return pd.read_csv(C.CLEAN_CSV, dtype=ID_COLS, parse_dates=DATE_COLS)
+    lines = pd.read_csv(C.CLEAN_CSV, dtype=ID_COLS, parse_dates=DATE_COLS)
+    if name == "lines":
+        return lines
+
+    from src import tables as T
+    if name == "links":
+        return T.build_links(lines)
+    visits = T.build_visits(lines)
+    if name == "visits":
+        return visits
+    if name == "customer_month":
+        return T.build_customer_month(visits)
+    if name == "customers":
+        from src.clean import clean_customers, read_raw
+        return T.build_customers(clean_customers(read_raw()[2]), visits)
+    raise ValueError(f"unknown table {name!r}; choose lines, visits, customers, customer_month, links")
 
 
 def profit(revenue, production_cost, repair_cost, points_redeemed):
