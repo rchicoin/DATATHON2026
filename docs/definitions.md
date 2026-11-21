@@ -50,6 +50,7 @@ member_at_visit = df["tier_at_purchase"].isin(["Member", "Silver", "Gold"])
 ## Loyalty tiers
 - Members earn 1 pt/$. Silver earns 1.25 pts/$ and Gold 1.5 pts/$.
 - Thresholds: **Silver 600, Gold 2000** points earned over the trailing 365 days, checked at each visit.
-- 20 points = $1, redeemed in blocks of 100.
+- 20 points = $1 off.
+- **Organisers' update (2026-11-21): ignore the case's rule that points are redeemed "in groups of 100".** Don't build any check or calculation on it. (In our cleaned data, per-transaction totals happen to be multiples of 100, but single rows aren't, because redemptions are spread across a transaction's rows. See `data_notes.md`.)
 - Tier is only recorded at a visit, so a lapsed member never shows a lower tier. `customer_month.tier_last_seen` is forward-filled, so treat it with this in mind.
 - Tier labels in order: `Pre-loyalty` < `Non-member` < `Member` < `Silver` < `Gold`.
