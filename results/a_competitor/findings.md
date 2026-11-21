@@ -5,6 +5,32 @@ Owner: Person A (Aylin) · Branch: `main` · Last updated: 2026-11-21
 <!-- Add a finding as soon as you have it. Copy this block for each one. Newest at the top. -->
 
 All A-1 numbers come from `analysis/a_competitor/a1_competitor_impact.ipynb`. They use purchase lines only (`row_type == Purchase`) and compare Mar–Oct each year with Mar–Oct 2023, which cancels out seasonality.
+A-2 numbers (F6–F8) come from `analysis/a_competitor/a2_seasonality.ipynb`. They also use purchases only. Every calendar month appears exactly 4 times in the data (Nov 2022 – Oct 2026), so the monthly averages are balanced.
+
+## F8. Black Friday + Boxing Week are 9 days and ~5% of yearly revenue; they don't drive the December peak
+- **Claim:** Each year has 3 Black Friday days (25% off) and 6 Boxing Week days (30% off). Together they bring in **5.2% of annual revenue** (4.8%–5.8% across years) and cost about **$142K a year in discounts**. A sale day sells ~2.5× a normal Jan–Oct day, but only **~1.4× other Nov–Dec days** ($42.9K and $38.5K per day vs. $29.1K). Most of the holiday peak is full-price gift and winter shopping.
+- **Evidence:** promo table and daily-revenue comparison, section 3 of the A-2 notebook. Sales are flagged from price paid vs. list price, and the only discounts are exactly 25% and 30%.
+- **Chart:** `results/a_competitor/a2_promo_days.png`
+- **Confidence / caveats:** high. Sale days may pull purchases forward from nearby days; we don't measure that.
+- **So what for the recommendation:** don't treat Nov–Dec revenue (26–30% of each year) as a program effect. Any period comparison must cover the same months.
+- **Handed to D?** yes
+
+## F7. Outerwear and hoodies make ~half their year's sales in Nov–Jan; the repair program launched in their slowest season
+- **Claim:** Outerwear peaks in December at 2.7× an average month and bottoms out in Jun–Jul at 0.3×. **49% of its yearly revenue comes in Nov–Jan.** Hoodies follow the same pattern (Dec 2.9×, Jun 0.2×). Shorts and tank tops are the mirror image: 1.7–1.85× in May–Aug, ~0.3× in Jan–Feb. Leggings, sports bras, tops and accessories are fairly flat apart from the December gift peak (1.6–1.9×).
+- **Evidence:** the category × month heatmap and peaks table, section 2
+- **Chart:** `results/a_competitor/a2_seasonality_heatmap.png`
+- **Confidence / caveats:** high
+- **So what for the recommendation (for Stream C):** repairs launched **1 April 2025**, right as outerwear enters its quietest months (Apr 0.6×, Jun–Jul 0.3×). A before/after-launch comparison of outerwear would show a big "drop" that is pure seasonality. Cannibalization tests must compare **the same months year over year**, or repair users vs. similar non-users in the same months.
+- **Handed to D?** yes, and **to C**
+
+## F6. Store-wide seasonality is strong and stable: December ≈ 1.9×, February/June/July ≈ 0.76×
+- **Claim:** Seasonal index (100 = average month): Dec 194, Nov 127, Sep–Oct 106–107 (back to school / fall), Jan 98. The low point is Feb and Jun (76) and Jul (78). The profile is almost identical (correlation 1.00) in the single pre-competitor year (Mar 2023 – Feb 2024), so the competitor didn't change *when* people shop, only *how many* shop.
+- **Evidence:** store-level index table, section 1. **Robustness (section 1b):** four methods agree within 6 points: simple average month, revenue per open day, ratio to a 12-month moving average, and a regression with trend and a competitor-year flag. The biggest gap is February (76 simple vs. 82 per open day), because February has only 28 days.
+- **Side result:** the regression estimates the **competitor year cost about 14% of revenue** after controlling for seasonality and trend (a simple comparison of Mar 2024–Feb 2025 with the year before gives −12%). The underlying trend is about +3% a year. This independently supports F1.
+- **Chart:** bottom row of `results/a_competitor/a2_seasonality_heatmap.png`
+- **Confidence / caveats:** high. The regression uses only 48 monthly points, so treat −14% as an estimate, not a precise figure.
+- **So what for the recommendation:** **every stream should compare the same months year over year** (or use these indices to adjust). A launch-month comparison would be skewed by up to 2.5×: for example, loyalty launched in June (index 76) and repairs in April (82), both quiet months.
+- **Handed to D?** yes
 
 ## F5. The 2025 outerwear dip comes from losing 18–24s, not (yet) evidence of repair cannibalization
 - **Claim:** Outerwear revenue in Mar–Oct 2025 was 10% below 2023, while most other categories grew. Almost all of the gap is 18–24 customers (−46%). For other ages, outerwear is roughly flat: 25–34 −8%, 35–44 −5%, 45–54 +1%, 55+ up.
@@ -48,7 +74,7 @@ All A-1 numbers come from `analysis/a_competitor/a1_competitor_impact.ipynb`. Th
 
 ## Open questions
 - Does the 2026 18–24 dip (index 53) mean they're still drifting away, or is it noise? A quick check on 18–24 new sign-ups per month (A "should") would answer it.
-- A-2 (seasonality heatmap) is not started yet.
+- A-2 is done (F6–F8). Should-have still open: 18–24 sign-ups and visits per customer over time.
 
 ## Decisions needed (also log them in `docs/decisions_log.md`)
 - None. The competitor date of 2024-03-01 is **confirmed** by the data, so `config.py` needs no change.
