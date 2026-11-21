@@ -4,6 +4,17 @@ Owner: Stream C · Last updated: 2026-11-21
 
 <!-- Newest at the top. -->
 
+## F4. No sign that repairs cannibalize outerwear: the outerwear drop came from customers who never used repairs
+- **Claim:** Outerwear revenue did fall after repairs launched, but not because of repairs. Repair users' outerwear spending *rose*. Customers who repaired a jacket cut jacket spending less than customers who repaired only activewear.
+- **Evidence:**
+  - Store level, 12 months before vs after launch: outerwear −12% ($1.32M → $1.16M) while every other category grew 8–29%. Split by customer: repair users' outerwear +10% ($806K → $890K); never-repair customers' outerwear −48% ($512K → $268K).
+  - Customer level, 12 months before vs after first repair: outerwear repairers (n=705) outerwear −8%, everything else +36%. Activewear-only repairers (n=189) outerwear −19%, everything else +22%. Outerwear's share of spend fell in both groups by a similar amount (−6.4 vs −5.5 pts).
+  - `analysis/c_repairs/c3_cannibalization.ipynb`, `results/c_repairs/c3_cannibalization.csv`.
+- **Chart:** `results/c_repairs/c3_cannibalization.png`
+- **Confidence / caveats:** Medium. The comparison group is small (189), and the never-repair group includes lapsing customers, so its −48% partly reflects people leaving. Nothing points towards cannibalization, though: outerwear repairers did no worse than either comparison.
+- **So what for the recommendation:** Leadership's second reason for scrapping repairs doesn't hold up. The outerwear decline is store-wide and comes from customers outside the program.
+- **Handed to D?** no
+
 ## F3. Repairs cost $134K a year; scrapping them pays off only if under 9% of the churn gap is caused by repairs
 - **Claim:** Repair users hold 77% of company ARR. Even if repairs explain only a quarter of their lower churn, losing them would cost far more profit than the program costs.
 - **Evidence:** Last 12 months (Nov 2025 to Oct 2026): repair cost $133,542 (2,384 outerwear + 1,459 activewear drop-offs). Repair users (2,175) hold $5.12M of $6.67M ARR. Margin before repair cost 56%. Churn gap 50.9 pts (F1).

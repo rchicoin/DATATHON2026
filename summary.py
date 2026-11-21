@@ -332,6 +332,8 @@ plt.show()
 # - **Slow repairs go with churn:** 24% churn when a user's typical turnaround is over 20 days, vs 11–13% otherwise.
 # - **Repairs cost $134K a year, but repair users hold 77% of ARR.** Scrapping them pays off only if repairs cause
 #   **less than 9%** of the churn gap. Even at 25%, the store loses ~$366K of profit to save $134K.
+# - **No sign of outerwear cannibalization.** Outerwear did fall 12% after launch, but repair users' outerwear spend
+#   *rose* 10%. The whole drop came from customers who never used repairs.
 
 # %% [markdown]
 # **Who we compare.** Only customers who visited in the year before repairs launched (Apr 2024 – Mar 2025), so everyone
@@ -410,7 +412,7 @@ c_turn.round(1)
 # **Cost saved vs profit at risk (scenarios).** Cost saved = repair cost in the last 12 months (Nov 2025 – Oct 2026).
 # ARR at risk = repair users' ARR × the 51-point churn gap. Profit at risk = ARR at risk × repair users' margin before
 # repair cost (repair cost is already in "cost saved"). We can't prove how much of the gap repairs *cause*, so we
-# assume 25% / 50% / 100% and solve for the break-even share. Not included: possible outerwear cannibalization.
+# assume 25% / 50% / 100% and solve for the break-even share. Cannibalization is tested separately below and not found.
 
 # %%
 c_since = C.AS_OF_DATE - pd.DateOffset(months=C.ARR_WINDOW_MONTHS)
@@ -445,6 +447,77 @@ ax.yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f"${x/1e3:.1f}M"))
 ax.set_title(f"Scrapping repairs pays off only if under {C_BREAK_EVEN:.0%} of the churn gap is caused by repairs",
              loc="left", color=INK, fontsize=13)
 ax.set_ylabel("Per year")
+fig.tight_layout()
+plt.show()
+
+# %% [markdown]
+# **Do repairs cannibalize outerwear?** Leadership's second reason: a repaired jacket is a new jacket not bought.
+# (1) Store level: net outerwear revenue in the 12 months before vs after launch, split by whether the customer ever
+# used repairs. (2) Customer level: outerwear spend in the 12 months before vs after each customer's first repair,
+# for customers who repaired outerwear vs those who repaired **only activewear**. The second group is similar people
+# whose repairs can't replace a jacket. Only first repairs by Oct 2025, so everyone has 12 months after.
+# Full analysis: `analysis/c_repairs/c3_cannibalization.ipynb`.
+
+# %%
+c_sales = lines[lines["row_type"].isin([C.PURCHASE, C.RETURN])].copy()
+c_sales["m"] = c_sales["date"].dt.to_period("M")
+c_before = c_sales["date"].between(C.REPAIRS_LAUNCH - pd.DateOffset(years=1), C.REPAIRS_LAUNCH - pd.Timedelta(days=1))
+c_after = c_sales["date"].between(C.REPAIRS_LAUNCH, C.REPAIRS_LAUNCH + pd.DateOffset(years=1) - pd.Timedelta(days=1))
+c_ow = c_sales[c_sales["category"] == "Outerwear"]
+c_grp = c_ow["customer_id"].map(c_cust["used_repair"]).map({True: "Repair users", False: "Never used repairs"})
+c_ow_split = pd.DataFrame({"Before ($K)": c_ow[c_before].groupby(c_grp)["revenue"].sum() / 1e3,
+                           "After ($K)": c_ow[c_after].groupby(c_grp)["revenue"].sum() / 1e3})
+c_ow_split.loc["All customers"] = c_ow_split.sum()
+c_ow_split["Change (%)"] = (c_ow_split["After ($K)"] / c_ow_split["Before ($K)"] - 1) * 100
+c_ow_split.round(0)
+
+# %%
+c_drop = lines[lines["row_type"] == C.DROPOFF]
+c_kind = {v: k for k, v in C.REPAIR_ITEMS.items()}
+c_first_ow = c_drop[c_drop["item_id"] == c_kind["outerwear"]].groupby("customer_id")["date"].min().dt.to_period("M")
+c_first_aw = c_drop[c_drop["item_id"] == c_kind["activewear"]].groupby("customer_id")["date"].min().dt.to_period("M")
+c_first_aw = c_first_aw[~c_first_aw.index.isin(c_first_ow.index)]
+c_months = pd.period_range(C.DATA_START, C.AS_OF_DATE, freq="M")
+c_ow_m = c_ow.groupby(["customer_id", "m"])["revenue"].sum()
+c_all_m = c_sales.groupby(["customer_id", "m"])["revenue"].sum()
+
+
+def c_before_after(first):
+    """Mean outerwear and other spend per customer, 12 months before vs from the month of first repair."""
+    first = first[first <= (C.AS_OF_DATE - pd.DateOffset(months=12)).to_period("M")]
+    ids = list(first.index)
+    o = c_ow_m[c_ow_m.index.isin(ids, level=0)].unstack().reindex(index=ids, columns=c_months).fillna(0)
+    a = c_all_m[c_all_m.index.isin(ids, level=0)].unstack().reindex(index=ids, columns=c_months).fillna(0)
+    pre = [pd.period_range(m - 12, m - 1, freq="M") for m in first]
+    post = [pd.period_range(m, m + 11, freq="M") for m in first]
+    ob = sum(o.loc[c, p].sum() for c, p in zip(ids, pre)) / len(ids)
+    oa = sum(o.loc[c, p].sum() for c, p in zip(ids, post)) / len(ids)
+    ab = sum(a.loc[c, p].sum() for c, p in zip(ids, pre)) / len(ids)
+    aa = sum(a.loc[c, p].sum() for c, p in zip(ids, post)) / len(ids)
+    return {"Customers": len(ids), "Outerwear change (%)": (oa / ob - 1) * 100,
+            "Everything else change (%)": ((aa - oa) / (ab - ob) - 1) * 100}
+
+
+c_cannib = pd.DataFrame({"Repaired outerwear": c_before_after(c_first_ow),
+                         "Repaired activewear only": c_before_after(c_first_aw)}).T
+c_cannib.round(1)
+
+# %%
+fig, ax = plt.subplots(figsize=(11, 4.6))
+for i, (col, colr, lab) in enumerate([("Outerwear change (%)", ORANGE, "Outerwear spend"),
+                                       ("Everything else change (%)", BLUE, "Spend on everything else")]):
+    xs = [x + (i - 0.5) * 0.36 for x in range(len(c_cannib))]
+    ax.bar(xs, c_cannib[col], 0.36, color=colr, label=lab)
+    for x, v in zip(xs, c_cannib[col]):
+        ax.text(x, v + (1.5 if v >= 0 else -4.5), f"{v:+.0f}%", ha="center", color=INK, fontsize=10)
+ax.axhline(0, color=INK2, lw=1)
+ax.set_xticks(range(len(c_cannib)), [f"{g} (n={n:,.0f})" for g, n in c_cannib["Customers"].items()])
+ax.set_ylim(-28, 48)
+ax.yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f"{x:+.0f}%"))
+ax.legend(loc="upper right", frameon=False, ncol=2)
+ax.set_title("Repairing a jacket didn't cut jacket buying more than for other repair users",
+             loc="left", color=INK, fontsize=13)
+ax.set_ylabel("12 months after first repair vs 12 before")
 fig.tight_layout()
 plt.show()
 
