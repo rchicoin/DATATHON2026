@@ -4,6 +4,14 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 
 <!-- Add a finding as soon as you have it. Copy this block for each one. Newest at the top. -->
 
+## F4. DRAFT recommendation: shift from rewarding spend to keeping customers
+- **Claim:** Leadership's plan (expand loyalty, scrap repairs) rests on "loyalty drove the recovery". The evidence so far says revenue came back from **fewer, older customers spending more** (D-1 F2, A F4/F9), and campaigns didn't keep new customers (D-2 F3). Loyalty lifts member revenue, but only **~30–34%** of the extra reaches profit (B early: 25–34 +$232 revenue / +$69 profit; 35–44 +$382 / +$131), vs the store's **57%** margin since launch. Redeemed points cost **$797K (5.0% of revenue)** since launch.
+- **Draft answer:** don't expand loyalty as it stands; redesign it to reward visits and retention. Don't scrap repairs until C-2 shows the cost saved beats the ARR at risk. Judge campaigns on 12-month retention. Win back 18–24s on undercut staples (leggings).
+- **Evidence:** `summary.py` section 8; B's `results/b_loyalty/loyalty_analysis.ipynb` (early, not yet in B's findings).
+- **Confidence / caveats:** medium. B's numbers are early and not yet matched on pre-launch spend; the member definition still needs checking. The repairs half depends entirely on C-1/C-2.
+- **So what for the recommendation:** this is the recommendation. Confirm at the 2:00 check-in.
+- **Handed to D?** yes (own stream)
+
 ## F3. The Pilates campaign brought short-term shoppers, not long-term customers (Q7)
 - **Claim:** Among customers who signed up in the same weeks (Jan 6 – Mar 31, 2025), only **52%** of the 360 Pilates-campaign customers came back within a year, vs **81%** from other channels. **47%** never made a second visit (vs 17%), and **64%** made their last visit during the campaign itself (vs 23%). By month 12, 5% visit in a given month vs 22%. They're now **90% churned** (vs 60%). In their first year they spent **$368** each (vs $842) and made **$226** profit (vs $496). Today they contribute **$53K of ARR** ($148 per customer vs $591).
 - **Who they were:** similar ages (57% aged 18–34 vs 53%), all Pilates-interested, fewer loyalty members (56% vs 72%). 40% of their spend went on Pilates products (vs 11%). They came for the campaign's Pilates offer and didn't move into the rest of the range.
