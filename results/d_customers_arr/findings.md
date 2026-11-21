@@ -4,6 +4,26 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 
 <!-- Add a finding as soon as you have it. Copy this block for each one. Newest at the top. -->
 
+## F10. A 50% points cap touches 4% of purchases and $29K of points, but they're the purchases most often returned (checks deck rec 2)
+- **Claim:** Last 12 months: 46,347 purchases. **1,982 (4.3%)** were paid more than half with points. Points above the cap: **$29K of $413K (7%)**. Those purchases were returned **24% of the time vs 10%** for other points purchases, about **265 extra returns a year**.
+- **Caveat:** a cap doesn't destroy points (customers keep them for later), so it isn't a $29K saving. Its value is fewer high-return purchases and a slower build-up of redemptions. Low cost, low risk, modest money. B's "+$62K for points back to 5%" is a separate, bigger lever.
+- **Evidence:** `analysis/d_customers_arr/d7_recommendation_checks.ipynb` §3. **Chart:** `results/d_customers_arr/d7_points_cap.png`
+
+## F9. Young shoppers aren't more price-sensitive, and a leggings discount for everyone costs about what winning them back is worth (checks deck rec 3)
+- **Price sensitivity:** in the year before the competitor, 18–24s spent **5.0%** of their money at sale prices vs 4.6–5.5% for other ages, and **22.8%** on leggings vs 22.8–24.2%. Young shoppers weren't bargain hunters or leggings-heavy.
+- **What they stopped buying:** Mar–Oct 2024 vs 2023, 18–24 spending fell **39–58% in every category** (leggings −58% the most). Shoppers 25+ fell mainly in **leggings (−24%)** and only 2–8% elsewhere. So the competitor took young shoppers *entirely*, and took **leggings sales from everyone**.
+- **Cost of a leggings price-match for all customers** (last 12 months: $1.34M of leggings sales, 62% margin; 18–24s are only **8%** of leggings spend): 10% off = **$134K/yr** (break-even 311 returning young shoppers at ~$430 profit each), 15% = **$201K** (467), 20% = **$268K** (623). Winning back half the lost young shoppers is worth **$212K** (~460 people, A F12).
+- **So what:** a store-wide leggings price-match mostly discounts older customers (92% of leggings spend) and only pays off at ~10% off. Better: **a targeted offer for under-25s** (student/first-visit pricing), which costs a fraction of this, and a leggings price-match justified as defending leggings for *all* ages (25+ leggings −24%), not as a young-shopper tool.
+- **Evidence:** `d7_recommendation_checks.ipynb` §2. **Chart:** `results/d_customers_arr/d7_price_match.png`
+- **Confidence / caveats:** high on the descriptive numbers. The cost assumes leggings volume doesn't change; extra volume from a discount would offset part of it.
+
+## F8. Slow repairs still go with more churn when comparing similar customers, but the evidence is suggestive, not proven (checks deck rec 1)
+- **Method:** snapshot at 30 Apr 2026; 1,698 repair users with no open repairs. Logistic regression of "no visit in the next 180 days" on turnaround group plus visits, purchase visits and spend (last 12 months), days since last purchase, tenure, number of repairs, Silver/Gold, age band.
+- **Result (churn within 6 months, similar customers compared):** ≤10 days **15%** · 11–20 days **17%** · over 20 days **19%**. The ordering holds, but over-20-days vs 11–20 is odds ratio **1.32 (95% 0.89–1.95, p = 0.16)**: not statistically certain.
+- **Store-backlog check:** turnaround partly reflects when the customer picks up. Using the *store's* backlog that week (other customers' repairs dropped off the same week, 10–23 days), each +5 days goes with **1.19× the odds of leaving (95% 1.00–1.42, p = 0.053)**: borderline, same direction.
+- **So what:** the 20-day target is supported in direction, cheap to implement and low-risk, but the deck shouldn't present it as proven. Suggested wording: "slow repairs go with more customers leaving; a 20-day target is a cheap safeguard." C's raw 24% vs 11–13% (churn measured to Oct 2026) is the larger, uncontrolled version.
+- **Evidence:** `d7_recommendation_checks.ipynb` §1. **Chart:** `results/d_customers_arr/d7_turnaround_adjusted.png`
+
 ## F7. Loyalty buys a 6-month spending bump that fades; repairs go with spending that stays higher for over a year; no sign the website lifted members
 - **Method:** linear regression (event study) on 457,780 customer-months (14,080 customers, Pilates recruits excluded). Monthly repeat spend is explained by dummies for months before/after joining loyalty and before/after the first repair, plus a dummy for every calendar month (absorbs the competitor, season, holiday sales, website, new manager) and every customer (compares each customer with themselves). Standard errors clustered by customer.
 - **Loyalty, extra $ per month vs own normal:** 6–4 months before +12 · 3–1 before −20 · joining month +102 · **1–3 after +36 · 4–6 after +42 · 7–12 after +5 · 13+ after −14**. A short bump, gone within a year and slightly below where members started.
