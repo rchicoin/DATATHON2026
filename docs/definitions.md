@@ -24,7 +24,7 @@ These values are implemented in `src/config.py`. If you change one there, change
 | Event | Date |
 |---|---|
 | Sales data starts / ends | 2022-11-01 / 2026-10-31 (`signup_date` goes back to 2018) |
-| Competitor opens | **2024-03-01 (working estimate)** |
+| Competitor opens | **2024-03-15** (confirmed). `C.COMPETITOR_OPEN_DAY` = 2024-03-15; `C.COMPETITOR_OPEN` = 2024-03-01, the month it opened, for monthly analysis (March 2024 is the first competitor month) |
 | Loyalty launch | 2024-06-01 |
 | Pilates push | 2025-01-06 to 2025-03-31 |
 | Free repairs launch | 2025-04-01 |
