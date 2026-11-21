@@ -9,8 +9,19 @@
 
 # %% [markdown]
 # # Lululime — Should leadership scrap repairs and expand loyalty?
-# Dataverse 2026 · Final notebook. Edit `summary.py`, then generate the notebook with:
-# `jupytext --to notebook summary.py -o summary.ipynb`, and run it top to bottom.
+# Dataverse 2026 · Final notebook. Every output below is saved, so it can be read without running anything.
+#
+# **How to run it yourself.** This notebook uses the team's shared cleaning code (`src/`) and the data files, which
+# live in the project repository: **https://github.com/rchicoin/LuluLime-Datathon-2026**
+# ```
+# git clone https://github.com/rchicoin/LuluLime-Datathon-2026.git
+# cd LuluLime-Datathon-2026
+# pip install -r requirements.txt
+# jupyter lab summary.ipynb        # then Run All (about 5 minutes; section 2 rebuilds the data from the raw CSVs)
+# ```
+# Supporting notebooks for each stream are in `analysis/`, and every chart is in `results/` and `slides/charts/`.
+#
+# *For the team:* edit `summary.py`, then regenerate with `jupytext --to notebook summary.py -o summary.ipynb`.
 
 # %% [markdown]
 # ## 1. Problem framing
