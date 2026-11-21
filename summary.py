@@ -161,9 +161,11 @@ plt.show()
 
 # %% [markdown]
 # ## 4. Competitor impact & seasonality (Stream A, slide 4)
-# The competitor's opening date isn't in the brief, so we **inferred it from the data**: March 2024, the month
-# 18–24 revenue drops sharply vs the same month a year earlier. Every comparison below uses the **same months
-# year over year**, so seasonality cancels out. Full analysis: `analysis/a_competitor/` (A-1, A-2, A-3).
+# The brief says the competitor opened "recently" but gives no date, so we **inferred it from the data**: March 2024,
+# the month 18–24 revenue drops sharply vs the same month a year earlier. Every comparison below uses the **same
+# months year over year** (e.g. Mar–Oct 2024 vs Mar–Oct 2023), so seasonal swings cancel out. Mar–Oct is used because
+# the data ends in October 2026, so it's the longest window available in every year. Full analysis, with
+# explanations of every step: the three notebooks in `analysis/a_competitor/`.
 #
 # - **The competitor took young customers, and they never came back.** 18–24 revenue fell ~45% and is still ~45% below
 #   2023; every other age band recovered and grew. The store-wide recovery comes from customers aged 25 and over.
@@ -277,7 +279,8 @@ a_new[A_AGES].rename_axis("Mar–Oct of").astype(int)
 
 # %% [markdown]
 # **Seasonality to control for.** Seasonal index = average revenue in a calendar month ÷ that row's average month × 100,
-# over Nov 2022 – Oct 2026 (every month appears 4 times). Four calculation methods agree within 6 points (A-2 notebook).
+# over Nov 2022 – Oct 2026 (every month appears 4 times). Four calculation methods agree within 6 points
+# (see `analysis/a_competitor/a2_seasonality.ipynb`).
 # Black Friday weekend and Boxing Week are the only discounts: 9 days and ~5% of yearly revenue. A sale day sells
 # ~1.4× an ordinary Nov–Dec day, so most of the December peak is full-price holiday shopping.
 # **For any before/after comparison:** loyalty launched in June (index 76) and repairs in April (82), both quiet months,
