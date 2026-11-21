@@ -7,6 +7,23 @@ Owner: Person A (Aylin) · Branch: `main` · Last updated: 2026-11-21
 All A-1 numbers come from `analysis/a_competitor/a1_competitor_impact.ipynb`. They use purchase lines only (`row_type == Purchase`) and compare Mar–Oct each year with Mar–Oct 2023, which cancels out seasonality.
 A-2 numbers (F6–F8) come from `analysis/a_competitor/a2_seasonality.ipynb`. They also use purchases only. Every calendar month appears exactly 4 times in the data (Nov 2022 – Oct 2026), so the monthly averages are balanced.
 A-3 numbers (F9–F10, the Stream A should-have) come from `analysis/a_competitor/a3_signups_retention.ipynb`. New customers are counted only from Nov 2022, because the customer file has no one who stopped shopping before then.
+A-4 numbers (F11–F12) come from `analysis/a_competitor/a4_recovery_and_value.ipynb`.
+
+## F12. The lost young shoppers are worth ~$550K of yearly repeat sales and ~$424K of profit a year
+- **Claim:** Yearly sales from returning 18–24 customers (ARR) fell from **$1.19M (Feb 2024, just before the competitor) to $0.64M (Oct 2026), −$549K (−46%)**. Total ARR still grew (+6%, $6.29M → $6.67M) because every older age band grew. Each year, young customers now bring **$592K less revenue and $424K less profit** than in the year before the competitor, from ~900 fewer shoppers. Each young shopper is worth **~$430 profit a year**. Winning back half of them (~460 people) would add **~$275K ARR and ~$212K profit a year**, about half of what redeemed loyalty points cost in the latest 12 months ($413K) and more than all repairs ($134K).
+- **Evidence:** ARR by age band, yearly value table and scenarios, Part 2 of the A-4 notebook
+- **Chart:** `results/a_competitor/a4_arr_change_by_age.png`, `results/a_competitor/a4_win_back_value.png`
+- **Confidence / caveats:** high on the size of the loss. The scenarios assume regained customers behave like today's young customers and exclude the cost of the offer that wins them back.
+- **So what for the recommendation:** gives slide 10 a number. Shifting part of the loyalty budget to winning back young shoppers is worth more than expanding perks for people who already shop here. Budget rule: an offer costing under ~$430 per young customer kept pays for itself within a year.
+- **Handed to D?** yes
+
+## F11. Loyalty didn't bring back the shoppers the competitor took; it plausibly made older shoppers visit more often
+- **Claim:** Almost everyone who keeps shopping joins: by mid-2025, **~90% of sales came from members** in every age group, so "members' revenue grew" mostly shows who kept shopping. **Young shoppers joined almost as often as older ones (66% vs 70%) yet stayed ~45% down**, while customers aged 25+ recovered (Mar–Oct sales relative to 2023: 90 → 112 → 123). Older shoppers didn't return in greater numbers (−4%) but **visited 22% more often** (4.5 → 5.4 trips a year, 6.0 in 2026), with slightly smaller baskets (−4%). Among shoppers from 2023 who stayed, older members spent 27% more by 2025; young members −4%. Future members were already the best customers before loyalty existed (~$1,130 vs ~$310 each in Mar–Oct 2023).
+- **Evidence:** member share of sales, join rates, revenue drivers and same-customer comparison, Part 1 of the A-4 notebook
+- **Chart:** `results/a_competitor/a4_member_share.png`, `results/a_competitor/a4_recovery_drivers.png`
+- **Confidence / caveats:** medium. Members choose to join, so they're more engaged to begin with. More frequent visits fit what points encourage, but could also come from the competitor's novelty fading.
+- **So what for the recommendation:** leadership's credit to loyalty is overstated. The program's plausible benefit (more frequent visits from existing older customers) doesn't require expanding perks, and it hasn't touched the young segment the competitor took. For Aisyah (B), slide 5.
+- **Handed to D?** yes, and **to B**
 
 ## F10. 18–24s still dwindling in 2026: fewer new customers and fewer returning ones
 - **Claim:** Active 18–24 customers (Mar–Oct) went **1,513 (2023) → 1,106 → 858 → 725 (2026)**, down 52% in three years. In 2026, new 18–24s fell again (244 → 201), and returning ones kept shrinking (614 → 524), because each year fewer new young customers join to replace those who leave. In the first year (2023 → 2024), the 407 lost active customers split almost evenly: 195 fewer new and 212 fewer returning.
