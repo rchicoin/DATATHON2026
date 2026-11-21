@@ -6,3 +6,4 @@ jupyterlab>=4
 jupytext>=1.16
 nbstripout>=0.7
 scikit-learn>=1.5
+statsmodels>=0.14

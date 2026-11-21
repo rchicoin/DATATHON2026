@@ -81,7 +81,7 @@ customer_month = load("customer_month")
 print(f"{len(lines):,} lines · {len(visits):,} visits · {len(customers):,} customers")
 
 # %% [markdown]
-# ## 3. ARR over time (Stream D, slide 3)
+# ## 3. ARR over time (Stream D, slide 4)
 # ARR fell for a year after the competitor opened, then recovered to a new high. Plotted from Nov 2023, the first
 # month with a full 12 months of history. ARR is a rolling total, so it lags real changes by up to a year.
 
@@ -160,7 +160,7 @@ fig.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 4. Competitor impact & seasonality (Stream A, slide 4)
+# ## 4. Competitor impact & seasonality (Stream A, slide 5)
 # The competitor opened on **15 March 2024**, and sales to young shoppers dropped that same day: 18–24 year-olds spent
 # normally on 1–14 March (+2% vs the same days of 2023), then 50% less on 15–31 March.
 #
@@ -329,7 +329,7 @@ fig.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 5. Loyalty program: revenue vs profit, points-funded returns (Stream B, slides 5-6)
+# ## 5. Loyalty program: revenue vs profit, points-funded returns (Stream B, slide 6)
 # Leadership credits loyalty for the recovery and wants to expand it. Full analysis: `analysis/b_loyalty/b_loyalty.py`.
 #
 # - **Members grew spend more than similar non-members** (+$1,110 revenue, +$609 profit per member in the year after
@@ -615,7 +615,7 @@ fig.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 7. Pilates campaign (Stream D, slide 9)
+# ## 7. Pilates campaign (Stream D, slide 5)
 # Customers who signed up during the campaign (Jan 6 – Mar 31, 2025): the 360 from the Pilates campaign vs the 417
 # from other channels in the **same weeks**, so season and store conditions match. The data has no campaign cost,
 # so this measures value delivered, not ROI.
@@ -666,7 +666,175 @@ fig.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 8. Recommendation, KPIs & risks (Stream D, slide 10)
+# ## 8. Churn prediction model and repair forecast (Stream D, slides 7–8)
+# *Full version with charts: `analysis/d_customers_arr/d3_churn_model.ipynb`.*
+#
+# **Question:** does repair use lower churn **after holding everything else fixed**, and what would closing repairs
+# do to ARR and profit?
+#
+# **Design (no leakage):** snapshot at **30 Apr 2026**. Features use only data up to then: visits, purchase visits,
+# spend, points redeemed and returns in the last 12 months, days since last purchase, tenure, membership, Silver/Gold,
+# repair use, age band, channel, area, interests. Label = **no visit in the next 180 days**. Population: customers
+# with a visit in the 12 months before the snapshot.
+#
+# **Models (scikit-learn):** logistic regression (explainable: odds ratios) and gradient-boosted trees (non-linear),
+# trained on 75% of customers and scored on the other 25%.
+
+# %%
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+import numpy as np
+
+CH_T, CH_HORIZON, CH_SEED = pd.Timestamp("2026-04-30"), 180, 42
+ch_cust = customers.set_index("customer_id")
+
+
+def ch_features(snapshot):
+    """Per-customer features from all visits up to `snapshot` (customers with a visit in the prior 12 months)."""
+    past = visits[visits["date"] <= snapshot]
+    last12 = past[past["date"] > snapshot - pd.Timedelta(days=365)]
+    df = ch_cust.loc[last12["customer_id"].unique()].copy()
+    g = last12.groupby("customer_id")
+    df["visits_12m"] = g.size()
+    df["purchase_visits_12m"] = g["has_purchase"].sum()
+    df["revenue_12m"] = g["revenue"].sum()
+    df["redeemed_12m"] = g["redeemed_dollars"].sum()
+    df["returns_12m"] = g["has_return"].sum()
+    df["days_since_last_purchase"] = (snapshot - past[past["has_purchase"]].groupby("customer_id")["date"].max()).dt.days
+    df["days_since_last_purchase"] = df["days_since_last_purchase"].fillna(730)
+    df["tenure_years"] = (snapshot - df["signup_date"]).dt.days / 365
+    df["member"] = (df["loyalty_join_date"] <= snapshot).fillna(False).astype(int)
+    tier = past.sort_values("datetime").groupby("customer_id")["tier"].last()
+    df["silver_or_gold"] = tier.reindex(df.index).isin(["Silver", "Gold"]).astype(int)
+    drops = past[past["has_dropoff"]].groupby("customer_id").size()
+    df["used_repair"] = (drops.reindex(df.index).fillna(0) > 0).astype(int)
+    return df
+
+
+ch_pop = ch_features(CH_T)
+ch_future = visits[(visits["date"] > CH_T) & (visits["date"] <= CH_T + pd.Timedelta(days=CH_HORIZON))]
+ch_pop["churn"] = (~ch_pop.index.isin(ch_future["customer_id"])).astype(int)
+
+CH_NUM = ["visits_12m", "purchase_visits_12m", "revenue_12m", "redeemed_12m", "returns_12m",
+          "days_since_last_purchase", "tenure_years"]
+CH_BIN = ["used_repair", "member", "silver_or_gold",
+          "interest_run", "interest_yoga", "interest_pilates", "interest_outdoor", "interest_lifestyle"]
+CH_CAT = ["age_band", "acquisition_channel", "home_area"]
+ch_X, ch_y = ch_pop[CH_NUM + CH_BIN + CH_CAT], ch_pop["churn"]
+ch_Xtr, ch_Xte, ch_ytr, ch_yte = train_test_split(ch_X, ch_y, test_size=0.25, stratify=ch_y, random_state=CH_SEED)
+
+ch_prep = ColumnTransformer([("num", StandardScaler(), CH_NUM), ("bin", "passthrough", CH_BIN),
+                             ("cat", OneHotEncoder(handle_unknown="ignore", drop="first"), CH_CAT)])
+ch_prep_gb = ColumnTransformer([("num", "passthrough", CH_NUM + CH_BIN),
+                                ("cat", OneHotEncoder(handle_unknown="ignore"), CH_CAT)], sparse_threshold=0)
+
+
+def ch_model(kind):
+    if kind == "Logistic regression":
+        return Pipeline([("prep", ch_prep), ("model", LogisticRegression(max_iter=2000))])
+    return Pipeline([("prep", ch_prep_gb), ("model", HistGradientBoostingClassifier(
+        max_iter=300, learning_rate=0.05, random_state=CH_SEED))])
+
+
+ch_auc = pd.Series({k: roc_auc_score(ch_yte, ch_model(k).fit(ch_Xtr, ch_ytr).predict_proba(ch_Xte)[:, 1])
+                    for k in ["Logistic regression", "Gradient-boosted trees"]}, name="test AUC").round(3)
+print(f"{len(ch_pop):,} customers · {ch_y.mean():.1%} churned in the next 180 days · "
+      f"repair users {ch_pop['used_repair'].mean():.1%}")
+ch_auc   # 0.5 = coin flip, 1.0 = perfect ranking of who churns
+
+# %% [markdown]
+# **Repair effect after controls.** For each repair user, predict churn as they are, then with `used_repair`
+# switched off, everything else unchanged. Odds ratios from the logistic regression (below 1× = lowers churn odds;
+# numeric features per one standard deviation).
+
+# %%
+ch_effects, ch_full = {}, {}
+for k in ["Logistic regression", "Gradient-boosted trees"]:
+    ch_full[k] = ch_model(k).fit(ch_X, ch_y)
+    u = ch_X[ch_X["used_repair"] == 1]
+    ch_effects[k] = (ch_full[k].predict_proba(u.assign(used_repair=0))[:, 1].mean()
+                     - ch_full[k].predict_proba(u)[:, 1].mean()) * 100
+lg = ch_full["Logistic regression"]
+ch_names = CH_NUM + CH_BIN + list(lg.named_steps["prep"].named_transformers_["cat"].get_feature_names_out(CH_CAT))
+ch_odds = pd.Series(np.exp(lg.named_steps["model"].coef_[0]), index=ch_names)
+CH_LABELS = {"used_repair": "Used free repairs", "member": "Loyalty member", "silver_or_gold": "Silver or Gold tier",
+             "visits_12m": "Visits, last 12 months", "revenue_12m": "Spend, last 12 months",
+             "redeemed_12m": "Points redeemed ($)", "days_since_last_purchase": "Days since last purchase"}
+display(pd.Series(ch_effects, name="churn rise if repairs were switched off (pts)").round(1))
+
+show = ch_odds[list(CH_LABELS)].rename(CH_LABELS).sort_values()
+fig, ax = plt.subplots(figsize=(10, 4.6))
+ax.barh(show.index, show.values - 1, left=1, color=[BLUE if v < 1 else ORANGE for v in show.values], height=0.6)
+ax.axvline(1, color=INK2, lw=1)
+ax.set_xscale("log")
+ax.set_xticks([0.5, 0.75, 1, 1.5, 2, 3])
+ax.set_xticklabels(["0.5×", "0.75×", "1×", "1.5×", "2×", "3×"])
+ax.xaxis.set_minor_formatter(plt.NullFormatter())
+for name, val in show.items():
+    ax.annotate(f"{val:.2f}×", (val, name), xytext=(6 if val >= 1 else -6, 0), textcoords="offset points",
+                ha="left" if val >= 1 else "right", va="center", color=INK, fontsize=10)
+ax.set_xlim(0.4, 4.5)
+ax.grid(axis="y", visible=False)
+ax.set_xlabel("Odds of churning in the next 180 days (all features held fixed together)")
+fig.suptitle(f"Repair use halves the odds of churning ({ch_odds['used_repair']:.2f}×); loyalty membership "
+             f"doesn't move them ({ch_odds['member']:.2f}×)", x=0.01, ha="left", color=INK, fontsize=13)
+fig.tight_layout()
+plt.show()
+
+# %% [markdown]
+# **Forecast: ARR and profit at risk if repairs closed today.** Each **current** repair user (scored at 31 Oct
+# 2026) gets a predicted rise in churn if repairs were switched off; ARR at risk = Σ (rise × that customer's ARR),
+# plus next year's new repair users at last year's rate. Profit at risk = ARR at risk × margin before repair cost.
+# Both models are refitted on 40 bootstrap resamples each, which gives the ranges. (Decision #20: this is the deck's
+# headline, "closing repairs nets +$57K to −$67K a year".)
+
+# %%
+ch_now = ch_features(C.DATA_END)
+ch_users = ch_now[ch_now["used_repair"] == 1]
+ch_Xu = ch_users[CH_NUM + CH_BIN + CH_CAT]
+ch_year = visits[visits["date"] > C.DATA_END - pd.Timedelta(days=365)]
+ch_margin = (ch_year["profit"].sum() + ch_year["repair_cost"].sum()) / ch_year["revenue"].sum()
+ch_repair_cost = ch_year["repair_cost"].sum()
+ch_new_users = int((ch_cust["first_repair_date"] > C.DATA_END - pd.Timedelta(days=365)).sum())
+
+
+def ch_arr_at_risk(model):
+    lift = model.predict_proba(ch_Xu.assign(used_repair=0))[:, 1] - model.predict_proba(ch_Xu)[:, 1]
+    current = float((lift * ch_users["arr_12m"]).sum())
+    return current + current / len(ch_users) * ch_new_users * 0.5   # new users arrive through the year
+
+
+ch_rng = np.random.default_rng(CH_SEED)
+ch_boot = []
+for k in ["Logistic regression", "Gradient-boosted trees"]:
+    for _ in range(40):
+        idx = ch_rng.integers(0, len(ch_X), len(ch_X))
+        ch_boot.append({"model": k, "arr": ch_arr_at_risk(ch_model(k).fit(ch_X.iloc[idx], ch_y.iloc[idx]))})
+ch_boot = pd.DataFrame(ch_boot)
+ch_boot["profit"] = ch_boot["arr"] * ch_margin
+
+ch_forecast = ch_boot.groupby("model").agg(
+    arr_at_risk=("arr", "median"), profit_at_risk=("profit", "median"),
+    profit_low=("profit", lambda s: s.quantile(0.05)), profit_high=("profit", lambda s: s.quantile(0.95)))
+ch_forecast["repair cost saved by closing"] = ch_repair_cost
+ch_forecast["net effect of closing"] = ch_repair_cost - ch_forecast["profit_at_risk"]
+print(f"{len(ch_users):,} repair users today · margin before repair cost {ch_margin:.1%} · "
+      f"new repair users per year {ch_new_users:,}")
+ch_forecast.round(0)
+
+# %% [markdown]
+# **Reading it:** both models agree repairs reduce churn; they disagree on how much ARR rides on it. Closing repairs
+# nets somewhere between **+$57K (boosted trees) and −$67K (logistic regression) a year**: roughly break-even,
+# under 1% of revenue either way, while risking the customers who hold most of the ARR. Still observational: the
+# model controls for everything measured, not for unmeasured attachment to the brand.
+
+# %% [markdown]
+# ## 9. Recommendation, KPIs & risks (Stream D, slides 9–10)
 # **Answer:** not as planned. Revenue recovered from fewer, older customers spending more (sections 3–4), so the
 # gap is keeping customers, not rewarding the ones who stay. **Keep free repairs:** repair users churn far less than
 # similar customers, closing them is roughly break-even on profit (between +$57K and −$67K a year, section 6), and they
