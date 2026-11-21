@@ -6,6 +6,24 @@ Owner: Person A (Aylin) · Branch: `main` · Last updated: 2026-11-21
 
 All A-1 numbers come from `analysis/a_competitor/a1_competitor_impact.ipynb`. They use purchase lines only (`row_type == Purchase`) and compare Mar–Oct each year with Mar–Oct 2023, which cancels out seasonality.
 A-2 numbers (F6–F8) come from `analysis/a_competitor/a2_seasonality.ipynb`. They also use purchases only. Every calendar month appears exactly 4 times in the data (Nov 2022 – Oct 2026), so the monthly averages are balanced.
+A-3 numbers (F9–F10, the Stream A should-have) come from `analysis/a_competitor/a3_signups_retention.ipynb`. New customers are counted only from Nov 2022, because the customer file has no one who stopped shopping before then.
+
+## F10. 18–24s still dwindling in 2026: fewer new customers and fewer returning ones
+- **Claim:** Active 18–24 customers (Mar–Oct) went **1,513 (2023) → 1,106 → 858 → 725 (2026)**, down 52% in three years. In 2026, new 18–24s fell again (244 → 201), and returning ones kept shrinking (614 → 524), because each year fewer new young customers join to replace those who leave. In the first year (2023 → 2024), the 407 lost active customers split almost evenly: 195 fewer new and 212 fewer returning.
+- **Evidence:** new vs. returning table, section 3
+- **Chart:** `results/a_competitor/a3_18_24_new_vs_returning.png`
+- **Confidence / caveats:** high. This answers the open question from F4: the 2026 dip (index 53) is real and ongoing, not noise.
+- **So what for the recommendation:** without new young customers coming in, the 18–24 segment keeps shrinking every year. Neither loyalty (Jun 2024) nor repairs (Apr 2025) reversed it. Leadership's plan doesn't address the segment the competitor targeted. KPI to track: new 18–24 customers per quarter.
+- **Handed to D?** yes
+
+## F9. The competitor halved new young customers AND made existing ones less loyal
+- **Claim (acquisition):** New 18–24 customers in Mar–Oct fell from **420 (2023) to 225 (2024), −46%**, and stayed down: 244 in 2025, 201 in 2026. Their share of all new customers fell from **26% to 15%**. New customers aged 25+ grew 5% over the same period. Nearly every acquisition channel halved for 18–24s (walk-in 233 → 117, social media 106 → 58, referral 81 → 50).
+- **Claim (retention):** Before the competitor, 18–24s were **as loyal as everyone else**: 56% of those who bought in Nov 2022 – Feb 2023 bought again the next winter, vs. 54% for ages 25+. Across the competitor's opening, this fell to **35% vs. 44%**, and afterwards it was **44% vs. 52%**. Every age band's retention dropped when the competitor opened, but young customers dropped twice as much (−21 points vs. −10). They have stayed ~9 points behind since.
+- **Evidence:** new-customer table and retention tables (Nov–Feb windows give the pre-competitor benchmark; Mar–Oct windows match A-1), sections 1–2
+- **Chart:** `results/a_competitor/a3_new_customers_by_age.png`, `results/a_competitor/a3_retention_by_age.png`
+- **Confidence / caveats:** high on direction. The pre-competitor benchmark is a single year-on-year transition, because the data starts Nov 2022. Retention = bought again in the same months a year later, so seasonality cancels out.
+- **So what for the recommendation:** the competitor's lasting damage is a **broken pipeline of young customers**, not just a one-off loss. Expanding perks for existing members doesn't fix acquisition. A targeted 18–24 offer (or matching on staples like leggings, see F2) would address the actual gap.
+- **Handed to D?** yes
 
 ## F8. Black Friday + Boxing Week are 9 days and ~5% of yearly revenue; they don't drive the December peak
 - **Claim:** Each year has 3 Black Friday days (25% off) and 6 Boxing Week days (30% off). Together they bring in **5.2% of annual revenue** (4.8%–5.8% across years) and cost about **$142K a year in discounts**. A sale day sells ~2.5× a normal Jan–Oct day, but only **~1.4× other Nov–Dec days** ($42.9K and $38.5K per day vs. $29.1K). Most of the holiday peak is full-price gift and winter shopping.
@@ -73,8 +91,8 @@ A-2 numbers (F6–F8) come from `analysis/a_competitor/a2_seasonality.ipynb`. Th
 - **Handed to D?** yes
 
 ## Open questions
-- Does the 2026 18–24 dip (index 53) mean they're still drifting away, or is it noise? A quick check on 18–24 new sign-ups per month (A "should") would answer it.
-- A-2 is done (F6–F8). Should-have still open: 18–24 sign-ups and visits per customer over time.
+- ~~Is the 2026 18–24 dip real?~~ Answered in F10: yes, it's ongoing.
+- All Stream A must-haves (A-1, A-2) and the should-have (A-3) are done.
 
 ## Decisions needed (also log them in `docs/decisions_log.md`)
 - None. The competitor date of 2024-03-01 is **confirmed** by the data, so `config.py` needs no change.
