@@ -4,6 +4,25 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 
 <!-- Add a finding as soon as you have it. Copy this block for each one. Newest at the top. -->
 
+## F12. Four customer segments (KMeans): one customer in three brings in 80% of ARR
+- **Method:** `KMeans` (k = 4) on 6,075 customers who bought in the last 12 months, clustered on behaviour only (days since last purchase, trips, spend, basket, share paid with points, return rate, tenure, repair use, age; log-scaled and standardised). Interests, tier and channel are used afterwards to describe segments. Silhouette 0.19 for k = 4 (0.29 for k = 3); 4 chosen because it separates frequent returners.
+
+  | Segment | Customers | Share of ARR | Profile |
+  |---|---|---|---|
+  | **Gold regulars** | 1,930 (32%) | **80%** | 18 trips/yr, $2,774/yr, last purchase 16 days ago, **89% use repairs**, 75% Gold, 3.5 yrs as customers |
+  | **Occasional big-basket shoppers** | 1,913 (31%) | 15% | 3.5 trips, biggest basket ($199), oldest (avg 41, 3% aged 18–24), rarely use repairs (10%) |
+  | **Fading young, light shoppers** | 1,605 (26%) | 3% | 1.9 trips, smallest basket ($97), last purchase **144 days ago** (near churn), youngest group (avg age 30, 30% aged 18–24) |
+  | **Frequent returners** | 627 (10%) | 3% | **33% of their trips are returns**, 2.8 trips, last purchase 125 days ago |
+- **Evidence:** `analysis/d_customers_arr/d8_matching_segments.ipynb`, Part B. **Charts:** `results/d_customers_arr/d8_segments_arr.png`, `d8_segment_profiles.png`
+- **So what for the recommendation:** each recommendation maps to a segment. **Keep repairs** protects the Gold regulars (80% of ARR, 89% use repairs). **Win back young shoppers** targets the fading light segment before it churns. **Cap points / refund points as points** targets frequent returners. The occasional big-basket group (older, high basket) is the one to grow visit frequency in (the recovery so far came from more visits, F6). Rubric bonus: "smart segmentation".
+
+## F11. Propensity-score matching: matched like with like, repair users stop buying 13 points less
+- **Method:** landmark design from the external review (cohort active Apr 2024 – Mar 2025 and still buying Apr–Sep 2025; user = first repair by 30 Sep 2025; outcome = no purchase in the last 180 days at 31 Oct 2026). `LogisticRegression` propensity score on 20+ features measured by 30 Sep 2025 (age, area, channel, interests, tenure, membership, Silver/Gold, pre-launch spend, visits, returns and outerwear spend, Apr–Sep 2025 visits and spend), then `NearestNeighbors` 1-to-1 matching with a 0.2-SD caliper. 828 of 833 users matched; 300 bootstrap resamples for the range.
+- **Result:** repair users **17%** stopped buying vs **51%** of all non-users (raw gap −34) vs **30%** of matched non-users: **matched gap −13 pts (95% −8 to −18)**. Balance after matching: every feature's standardised difference ≤ 0.10 (before: up to 1.13).
+- **Fits with:** the external review's landmark estimate (~16 pts) and D's churn model (5–9 pts on a 6-month horizon). Three different methods all find repair users stay noticeably more, at about a third of the old "51 pts".
+- **Evidence:** `d8_matching_segments.ipynb`, Part A. **Chart:** `results/d_customers_arr/d8_propensity_matching.png`
+- **Confidence / caveats:** medium-high on "after accounting for everything observable". Unmeasured differences (how attached people are to their gear) can't be ruled out.
+
 ## F10. A 50% points cap touches 4% of purchases and $29K of points, but they're the purchases most often returned (checks deck rec 2)
 - **Claim:** Last 12 months: 46,347 purchases. **1,982 (4.3%)** were paid more than half with points. Points above the cap: **$29K of $413K (7%)**. Those purchases were returned **24% of the time vs 10%** for other points purchases, about **265 extra returns a year**.
 - **Caveat:** a cap doesn't destroy points (customers keep them for later), so it isn't a $29K saving. Its value is fewer high-return purchases and a slower build-up of redemptions. Low cost, low risk, modest money. B's "+$62K for points back to 5%" is a separate, bigger lever.
