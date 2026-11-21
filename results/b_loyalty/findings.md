@@ -9,6 +9,7 @@ Consolidated on 2026-11-21 from B's first pass (`loyalty_analysis.ipynb`, notes 
 - **Chart:** `results/b_loyalty/b1_matched_did.png`, `results/b_loyalty/b1_redemption_cost.png`
 - **Confidence / caveats:** low that this is caused by loyalty. Joining is a choice made by people who are already shopping more: joiners spent ~3.6× non-joiners before launch (A F11), and D's churn model finds **no retention effect of membership** once engagement is controlled (odds ratio 0.99, D F5). Treat $1,110 as an upper bound. *Replaces the first-pass comparison (below), which used "ever a member" and averaged over different customers in each year.*
 - **So what for the recommendation:** loyalty isn't losing money per member, but there's no evidence that it *creates* loyalty, and its cost is growing. Expanding perks raises a cost that's already ~6% of revenue without a proven return.
+- **What capping the cost is worth:** bringing points back to the 5%-of-sales target saves about **$62K a year** of profit: $413K redeemed in the last 12 months minus 5% × $7.02M sales ($351K). This is a simple scenario that assumes sales stay the same; it's the "+$62K" bar on the deck's financial-impact slide (`slides/deck_charts.py`, chart 9).
 
 ## F2. Purchases paid mostly with points are returned 2.4× as often (Q5)
 - **Claim:** Return rate by share of the purchase paid with points: 0%: 9.5% · 1–25%: 10.5% · 26–50%: 9.8% · **>50%: 23.7%** (3,617 purchase visits).
