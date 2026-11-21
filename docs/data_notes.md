@@ -55,6 +55,16 @@ Total revenue after dedup: **$26,204,614.30**
 - Customers who signed up before the data window have no "first visit" in the data, and `first_visit` is just the first one we can see.
 - `tier_at_purchase` has mixed types in pandas' default CSV reader. `src/clean.py` reads it as a string.
 
+## Points redeemed: the "groups of 100" rule is withdrawn
+The organisers told teams (2026-11-21) to **disregard** the case's note that points are redeemed in groups of 100, after a team found a transaction with `points_redeemed` = 117. What we see in the data:
+| Level | Not a multiple of 100 |
+|---|---|
+| Single rows | 53,659 of 68,484 rows with redemptions (e.g. 3, 7, 117). Expected: redemptions are **spread across the rows** of a transaction |
+| Transaction totals (after dropping the 1,016 duplicate rows) | **0** of 35,058 |
+| Transaction totals **without** dropping duplicates | 151 |
+
+So: always **sum `points_redeemed` per transaction** and **drop duplicates first**. Don't assume or check the 100-point rule. Nothing in `src/` depends on it, and no team number changes.
+
 ## Loyalty membership: checked against the data
 The organisers' rules (see `definitions.md`, "Loyalty program") hold in the data (sales deduplicated):
 | Check | Result |
