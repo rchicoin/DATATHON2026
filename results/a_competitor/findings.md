@@ -82,11 +82,11 @@ A-3 numbers (F9–F10, the Stream A should-have) come from `analysis/a_competito
 - **So what for the recommendation:** leggings are the most exposed category to price competition, so protect them rather than spending on store-wide perks. In 2025, leggings recovered for ages 35+ (around 0% to −8%) but not for 18–24 (−61%).
 - **Handed to D?** yes
 
-## F1. The data confirms the competitor opened in March 2024, and 18–24s took most of the hit
-- **Claim:** 18–24 revenue was up year over year through February 2024, then fell 25% in March and 45–54% from April to August. That's the first month it drops below −20%, which matches the working date in `config.py`. Store revenue for Mar–Oct 2024 was −17% (−$681K) vs. 2023, and **18–24s account for 53% of the lost revenue while being only 19% of 2023 revenue**. Restricting to Mar–May (before loyalty launched) gives the same pattern: 18–24 −40%, 25–34 −22%, other ages −10% to −15%.
-- **Evidence:** YoY table and the Mar–May robustness check, sections 1–2
+## F1. Sales dropped the day the competitor opened (15 March 2024), and 18–24s took most of the hit
+- **Claim:** The competitor opened on **15 March 2024**. 18–24 revenue was normal from 1–14 March (+2% vs the same days of 2023), then fell **50% from 15–31 March** and 45–54% from April to August. Over the whole of March it was only −25%, because half the month was before the opening. Store revenue for Mar–Oct 2024 was −17% (−$681K) vs. 2023, and **18–24s account for 53% of the lost revenue while being only 19% of 2023 revenue**. Restricting to Mar–May (before loyalty launched) gives the same pattern: 18–24 −40%, 25–34 −22%, other ages −10% to −15%.
+- **Evidence:** YoY table, the day-level check either side of 15 March, and the Mar–May robustness check, sections 1–2
 - **Chart:** `results/a_competitor/a1_yoy_by_age.png`
-- **Confidence / caveats:** high on the timing. We have no external confirmation of the opening date, so describe it as "inferred from the data".
+- **Confidence / caveats:** high. The drop starts on the opening day itself. The Mar–Oct window includes two pre-competitor weeks (1–14 March), which slightly understates the drop.
 - **So what for the recommendation:** whenever another stream compares "before vs. after loyalty" (June 2024), the competitor shock three months earlier distorts it. They should use the same months a year earlier and control for age band.
 - **Handed to D?** yes
 
@@ -95,4 +95,4 @@ A-3 numbers (F9–F10, the Stream A should-have) come from `analysis/a_competito
 - All Stream A must-haves (A-1, A-2) and the should-have (A-3) are done.
 
 ## Decisions needed (also log them in `docs/decisions_log.md`)
-- None. The competitor date of 2024-03-01 is **confirmed** by the data, so `config.py` needs no change.
+- The competitor opened on **2024-03-15**. `config.py` (`COMPETITOR_OPEN`), `docs/definitions.md` and decision #6 still say 2024-03-01 "working estimate". Month-level analyses are unaffected (March 2024 is the first competitor month either way), but the docs and any day-level analysis should use 15 March.

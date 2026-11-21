@@ -67,11 +67,11 @@ arr = arr[arr.index >= "2023-11-01"]
 trough_m = arr.idxmin()
 summary = pd.Series({
     "ARR Nov 2023 ($M)": arr.iloc[0] / 1e6,
-    "ARR at competitor open, Mar 2024 ($M)": arr[C.COMPETITOR_OPEN] / 1e6,
+    "ARR at competitor open, Mar 2024 ($M)": arr[C.COMPETITOR_OPEN.to_period("M").to_timestamp()] / 1e6,
     f"ARR trough, {trough_m:%b %Y} ($M)": arr.min() / 1e6,
     "ARR Oct 2026 ($M)": arr.iloc[-1] / 1e6,
     "Change trough to Oct 2026 (%)": (arr.iloc[-1] / arr.min() - 1) * 100,
-    "Change Mar 2024 to Oct 2026 (%)": (arr.iloc[-1] / arr[C.COMPETITOR_OPEN] - 1) * 100,
+    "Change Mar 2024 to Oct 2026 (%)": (arr.iloc[-1] / arr[C.COMPETITOR_OPEN.to_period("M").to_timestamp()] - 1) * 100,
 }).round(2)
 summary
 

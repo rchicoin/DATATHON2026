@@ -100,4 +100,4 @@ In the plan docs, `visits`, `customers` and `links` mean the tables built with t
 - Use `quantity × price` (`revenue`), never row counts. Never sum `points_balance_after`.
 
 ## Key numbers and dates
-Competitor ~2024-03-01 (A confirms) · Loyalty 2024-06-01 · Pilates 2025-01-06 to 03-31 (360 customers) · Repairs 2025-04-01 (2,175 users, 5,480 drop-offs; $45 outerwear / $18 activewear at drop-off) · Website 2025-11-17 · New manager 2026-02-02 · Data 2022-11-01 to 2026-10-31 · Churn = no visit in 180 days · Silver 600 / Gold 2,000 points over trailing 365 days.
+Competitor 2024-03-15 (`C.COMPETITOR_OPEN_DAY`; `C.COMPETITOR_OPEN` = 2024-03-01 is the month) · Loyalty 2024-06-01 · Pilates 2025-01-06 to 03-31 (360 customers) · Repairs 2025-04-01 (2,175 users, 5,480 drop-offs; $45 outerwear / $18 activewear at drop-off) · Website 2025-11-17 · New manager 2026-02-02 · Data 2022-11-01 to 2026-10-31 · Churn = no visit in 180 days · Silver 600 / Gold 2,000 points over trailing 365 days.

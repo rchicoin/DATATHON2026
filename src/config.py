@@ -23,7 +23,9 @@ DATA_END = pd.Timestamp("2026-10-31")     # last sales row
 AS_OF_DATE = DATA_END                     # "today" for churn / trailing-12m metrics
 
 # --- Key dates (see docs/definitions.md) ---------------------------------------
-COMPETITOR_OPEN = pd.Timestamp("2024-03-01")   # WORKING ESTIMATE — Person A to confirm
+# The competitor opened on 15 March 2024 (confirmed; the data shows 18-24 revenue -50% from that day).
+COMPETITOR_OPEN_DAY = pd.Timestamp("2024-03-15")   # the actual opening day: use for day-level work and charts
+COMPETITOR_OPEN = pd.Timestamp("2024-03-01")       # the MONTH it opened: use for monthly analysis / month lookups
 LOYALTY_LAUNCH = pd.Timestamp("2024-06-01")
 PILATES_START = pd.Timestamp("2025-01-06")
 PILATES_END = pd.Timestamp("2025-03-31")
@@ -32,7 +34,7 @@ WEBSITE_LAUNCH = pd.Timestamp("2025-11-17")
 NEW_MANAGER = pd.Timestamp("2026-02-02")
 
 EVENTS = {
-    "competitor_open": COMPETITOR_OPEN,
+    "competitor_open": COMPETITOR_OPEN_DAY,
     "loyalty_launch": LOYALTY_LAUNCH,
     "pilates_start": PILATES_START,
     "pilates_end": PILATES_END,
