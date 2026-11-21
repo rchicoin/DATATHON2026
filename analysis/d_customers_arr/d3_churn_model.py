@@ -236,7 +236,115 @@ pd.Series({
 }).round(1)
 
 # %% [markdown]
-# ## 5. Caveats
+# ## 5. Forecast: ARR at risk if the repair program shut down today
+# For every **current** repair user (scored at 31 Oct 2026), predict churn in the next 180 days twice: as they are,
+# and with `used_repair` switched off, everything else unchanged. Then:
+# - **ARR at risk** = Σ (rise in churn probability × that customer's current ARR). A customer who churns is assumed
+#   to take their whole 12-month ARR with them.
+# - **Profit at risk** = ARR at risk × the store's margin before repair costs (last 12 months).
+# - **Future users:** shutting the program also affects customers who would have started using repairs next year.
+#   We add them at last year's rate of new repair users, with the same average effect per customer.
+#
+# Every other program (loyalty, Pilates, website, new manager) is held fixed: each customer keeps their own tier,
+# membership and history, and everyone is scored on the same date. Ranges come from refitting both models on
+# 40 bootstrap resamples of the training snapshot.
+
+# %%
+last_year = visits[visits["date"] > C.DATA_END - pd.Timedelta(days=365)]
+margin = (last_year["profit"].sum() + last_year["repair_cost"].sum()) / last_year["revenue"].sum()
+repair_cost_year = last_year["repair_cost"].sum()
+first_repair = customers.set_index("customer_id")["first_repair_date"]
+new_users_last_year = int((first_repair > C.DATA_END - pd.Timedelta(days=365)).sum())
+
+users_now = cur[cur["used_repair"] == 1]
+Xu = users_now[NUM + BIN + CAT]
+
+
+def make_model(kind):
+    if kind == "Logistic regression":
+        return Pipeline([("prep", prep), ("model", LogisticRegression(max_iter=2000))])
+    return Pipeline([("prep", prep_gb), ("model", HistGradientBoostingClassifier(
+        max_iter=300, learning_rate=0.05, random_state=SEED))])
+
+
+def arr_at_risk(model):
+    lift = model.predict_proba(Xu.assign(used_repair=0))[:, 1] - model.predict_proba(Xu)[:, 1]
+    current = float((lift * users_now["arr_12m"]).sum())
+    per_user = current / len(users_now)
+    future = per_user * new_users_last_year * 0.5   # new users arrive through the year: half a year on average
+    return current, current + future, float(lift.mean() * 100)
+
+
+rng = np.random.default_rng(SEED)
+boot = []
+for kind in ["Logistic regression", "Gradient-boosted trees"]:
+    for b in range(40):
+        idx = rng.integers(0, len(X), len(X))
+        m = make_model(kind).fit(X.iloc[idx], y.iloc[idx])
+        cur_arr, total_arr, lift = arr_at_risk(m)
+        boot.append({"model": kind, "lift_pts": lift, "arr_current_users": cur_arr, "arr_incl_future": total_arr})
+boot = pd.DataFrame(boot)
+
+summary_rows = {}
+for kind, d in boot.groupby("model"):
+    for col, lab in [("lift_pts", "churn rise if repairs stop (pts)"),
+                     ("arr_current_users", "ARR at risk, current users ($)"),
+                     ("arr_incl_future", "ARR at risk incl. next year's new users ($)")]:
+        summary_rows[(kind, lab)] = {"low (5th pct)": d[col].quantile(0.05), "central": d[col].median(),
+                                     "high (95th pct)": d[col].quantile(0.95)}
+forecast = pd.DataFrame(summary_rows).T
+
+per_model = {}
+for kind, d in boot.groupby("model"):
+    profit = d["arr_incl_future"] * margin
+    per_model[kind] = {
+        "ARR at risk, central ($)": d["arr_incl_future"].median(),
+        "profit at risk, central ($)": profit.median(),
+        "profit at risk, low ($)": profit.quantile(0.05),
+        "profit at risk, high ($)": profit.quantile(0.95),
+        "net effect of closing, central ($)": repair_cost_year - profit.median(),
+        "bootstrap runs where closing loses money (%)": (profit > repair_cost_year).mean() * 100,
+    }
+per_model = pd.DataFrame(per_model).T.round(0)
+context = pd.Series({
+    "repair users today": len(users_now),
+    "their current ARR ($)": round(users_now["arr_12m"].sum()),
+    "new repair users per year": new_users_last_year,
+    "margin before repair cost (%)": round(margin * 100, 1),
+    "yearly repair cost saved by closing ($)": repair_cost_year,
+})
+display(forecast.round(1))
+display(context)
+per_model
+
+# %%
+fig, ax = plt.subplots(figsize=(10, 4.8))
+cats = ["Repair cost saved\nby closing", "Profit lost\n(logistic regression)", "Profit lost\n(boosted trees)"]
+centr = [repair_cost_year,
+         per_model.loc["Logistic regression", "profit at risk, central ($)"],
+         per_model.loc["Gradient-boosted trees", "profit at risk, central ($)"]]
+lo = [0, centr[1] - per_model.loc["Logistic regression", "profit at risk, low ($)"],
+      centr[2] - per_model.loc["Gradient-boosted trees", "profit at risk, low ($)"]]
+hi = [0, per_model.loc["Logistic regression", "profit at risk, high ($)"] - centr[1],
+      per_model.loc["Gradient-boosted trees", "profit at risk, high ($)"] - centr[2]]
+bars = ax.bar(cats, [v / 1e3 for v in centr], color=[BLUE, ORANGE, ORANGE], width=0.5,
+              yerr=[[v / 1e3 for v in lo], [v / 1e3 for v in hi]], capsize=6,
+              error_kw={"ecolor": INK2, "elinewidth": 1.2})
+ax.axhline(repair_cost_year / 1e3, color=BLUE, lw=1, ls=(0, (4, 3)))
+for bar, v in zip(bars, centr):
+    ax.annotate(f"${v/1e3:,.0f}K", (bar.get_x() + bar.get_width() / 2, v / 1e3), xytext=(10, 4),
+                textcoords="offset points", ha="left", color=INK, fontsize=10)
+ax.set_ylabel("Per year ($K) · whiskers: 90% bootstrap range")
+ax.grid(axis="x", visible=False)
+ax.set_ylim(0, max(np.array(centr) + np.array(hi)) / 1e3 * 1.15)
+fig.suptitle("Closing repairs roughly breaks even: the profit it would lose is about the same as its cost",
+             x=0.01, ha="left", color=INK, fontsize=13)
+fig.tight_layout()
+fig.savefig(OUT / "d3_repair_arr_forecast.png", dpi=200)
+plt.show()
+
+# %% [markdown]
+# ## 6. Caveats
 # - This is still **observational**: the model controls for what we can measure (frequency, recency, spend, tier,
 #   demographics), not for unmeasured engagement. The repair effect after controls is evidence, not proof.
 # - Visits include repair pickups. The purchase-only label checks that pickup trips aren't creating the effect.

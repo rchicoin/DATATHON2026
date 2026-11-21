@@ -8,13 +8,20 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 - **Method:** snapshot at 30 Apr 2026. Features use only data up to then: visits, purchase visits, spend, points redeemed, returns, days since last purchase, tenure, membership, tier, repair use, age band, channel, area and interests. Label: no visit in the next 180 days. 6,129 customers active in the prior year (42% churned). Logistic regression and gradient-boosted trees, trained on 75% and tested on 25%.
 - **Accuracy:** test AUC **0.84** (both models), so the model ranks who will churn well. Removing repair use barely changes AUC (0.842), because visits and recency already carry most of the signal.
 - **Repair effect after controls:** odds ratio **0.51** (repair users' churn odds are half a similar non-user's). In percentage points, switching repair use off for repair users raises their predicted churn by **5.3 pts (boosted trees) to 8.6 pts (logistic)**, vs a raw gap of 37 pts. The purchase-visits-only label gives the same result (4.9–8.4 pts), so pickup trips aren't creating it.
-- **What it means for C-2:** C-2's break-even is 9% of the 51-pt gap, about **4.6 pts**. The model's 5–9 pts is **above break-even but close to it**. Profit at risk becomes about **$151K–$247K a year** (repair users' $5.12M ARR × effect × 56% margin) vs **$134K** saved. Scrapping repairs still loses money, but by **$17K–$113K a year**, much less than the 25% scenario ($233K). The 50% and 100% scenarios look too high.
+- **Forecast, ARR at risk if repairs close (section 5, supersedes an earlier rough estimate of $151K–$247K):** scored per customer at 31 Oct 2026, each repair user's churn with vs without repairs, times their own ARR, plus next year's ~1,118 new repair users; 40 bootstrap refits per model.
+
+  | Model | Churn rise | ARR at risk | Profit at risk (57% margin) | Net effect of closing vs $134K cost |
+  |---|---|---|---|---|
+  | Logistic regression | 8.1 pts | $350K | $201K (90% range $160K–$256K) | closing **loses** ~$67K/yr |
+  | Gradient-boosted trees | 5.3 pts | $134K | $77K ($50K–$103K) | closing **saves** ~$57K/yr |
+
+  **Repairs roughly break even financially.** The two models agree repairs reduce churn, but land on opposite sides of the $134K cost. The trees model finds the effect concentrated in lighter, lower-ARR users, so less ARR is at stake. Either way, C-2's 25/50/100% scenarios ($366K–$1.47M) overstate the risk.
 - **Loyalty:** membership has **no retention effect** once engagement is controlled (odds ratio 0.99). Silver/Gold: 1.04. Redeeming more points goes with *higher* churn (1.34× per SD), consistent with customers cashing out before leaving.
 - **At risk now:** applied to Oct 2026 data, **1,864 customers** have a 60%+ predicted churn risk, holding **$649K of ARR (9.7%)**. Only 14.5% of them use repairs.
 - **Evidence:** `analysis/d_customers_arr/d3_churn_model.ipynb`
 - **Chart:** `results/d_customers_arr/d3_churn_odds.png`
 - **Confidence / caveats:** medium. Still observational: it controls for what we can measure, not for unmeasured loyalty to the brand. 180-day churn after one snapshot is a different measure from C-1's, so the comparison with C-2 is approximate.
-- **So what for the recommendation:** keep repairs, but say the honest number: they pay for themselves with a modest margin, so cutting turnaround (C F2) and cost per repair matters. Loyalty membership doesn't keep customers. Use the at-risk list for targeted win-back offers.
+- **So what for the recommendation:** scrapping repairs is **not** the clear saving leadership expects: at best ~$57K a year (under 1% of revenue), at worst a ~$67K loss, while risking customers who hold 77% of ARR, with no cannibalization (C F4). Keep repairs, but make them pay clearly: faster turnaround (C F2) and lower cost per repair. Loyalty membership doesn't keep customers. Use the at-risk list for targeted win-back offers.
 - **Handed to D?** yes (own stream)
 
 ## F4. DRAFT recommendation: keep repairs, fix loyalty's profit before expanding it
