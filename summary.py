@@ -330,8 +330,64 @@ plt.show()
 
 # %% [markdown]
 # ## 5. Loyalty program: revenue vs profit, points-funded returns (Stream B, slides 5-6)
+# Leadership credits loyalty for the recovery and wants to expand it. Full analysis: `analysis/b_loyalty/b_loyalty.py`.
+#
+# - **Members grew spend more than similar non-members** (+$1,110 revenue, +$609 profit per member in the year after
+#   launch, within age band × pre-launch spend quartile, customers active in both years). About 55% of the extra revenue
+#   reaches profit, the same as the store's normal margin, so points don't eat the gain. **But this is an upper bound:**
+#   joiners were already the keenest shoppers, and the churn model (D-4) finds membership has **no retention effect**
+#   once engagement is controlled (odds ratio 0.99).
+# - **The cost of points keeps rising:** $797K since launch (5.0% of revenue), $413K in the last 12 months (5.9%),
+#   up from 2.4% of revenue in the first full quarter to 5.5–6.5% in 2026.
+# - **Purchases paid mostly with points are returned 2.4× as often** (24% vs ~10%).
+# - **Being close to the next tier doesn't change spending** (baskets $156–$164 at every distance), so the tier
+#   mechanic isn't driving extra spend.
 
 # %%
+L = C.LOYALTY_LAUNCH
+b_pre = visits[(visits["date"] >= L - pd.DateOffset(years=1)) & (visits["date"] < L)]
+b_post = visits[(visits["date"] >= L) & (visits["date"] < L + pd.DateOffset(years=1))]
+b_cols = ["revenue", "profit"]
+b = (b_pre.groupby("customer_id")[b_cols].sum().add_suffix("_pre")
+     .join(b_post.groupby("customer_id")[b_cols].sum().add_suffix("_post"), how="inner")   # active in both years
+     .join(customers.set_index("customer_id")[["age_band", "loyalty_join_date"]]))
+b["member"] = b["loyalty_join_date"].notna() & (b["loyalty_join_date"] < L + pd.DateOffset(years=1))
+b["spend_q"] = pd.qcut(b["revenue_pre"], 4, labels=False)
+b["d_rev"], b["d_prof"] = b["revenue_post"] - b["revenue_pre"], b["profit_post"] - b["profit_pre"]
+b_cell = b.groupby(["age_band", "spend_q", "member"])[["d_rev", "d_prof"]].mean().unstack("member")
+b_did = pd.DataFrame({k: b_cell[k][True] - b_cell[k][False] for k in ["d_rev", "d_prof"]}).dropna()
+b_w = b[b["member"]].groupby(["age_band", "spend_q"]).size().reindex(b_did.index)
+b_total = b_did.mul(b_w, axis=0).sum() / b_w.sum()
+print(f"{len(b):,} customers active in both years, {b['member'].sum():,} joined in year 1. Matched extra per member: "
+      f"revenue ${b_total['d_rev']:,.0f}, profit ${b_total['d_prof']:,.0f} "
+      f"({b_total['d_prof'] / b_total['d_rev']:.0%} reaches profit)")
+(b_did.mul(b_w, axis=0).groupby("age_band").sum().div(b_w.groupby("age_band").sum(), axis=0)
+ .rename(columns={"d_rev": "extra revenue / member ($)", "d_prof": "extra profit / member ($)"}).round(0))
+
+# %%
+b_since = visits[visits["date"] >= L]
+b_q = b_since.groupby(b_since["date"].dt.to_period("Q"))[["redeemed_dollars", "revenue"]].sum()
+print(f"Redeemed points since launch: ${b_since['redeemed_dollars'].sum():,.0f} "
+      f"({b_since['redeemed_dollars'].sum() / b_since['revenue'].sum():.1%} of revenue)")
+(b_q["redeemed_dollars"] / b_q["revenue"] * 100).round(1).rename("redeemed, % of revenue")
+
+# %%
+b_buy = lines[lines["row_type"] == C.PURCHASE].groupby("transaction_id")["revenue"].sum().to_frame()
+b_buy = b_buy.join(visits.set_index("transaction_id")["redeemed_dollars"])
+b_buy = b_buy[b_buy["revenue"] > 0]
+b_buy["bucket"] = pd.cut((b_buy["redeemed_dollars"] / b_buy["revenue"]).clip(upper=1),
+                         [-0.001, 0, 0.25, 0.5, 1.0], labels=["0%", "1–25%", "26–50%", ">50%"])
+b_buy["returned"] = b_buy.index.isin(set(lines.loc[lines["row_type"] == "Return", "original_transaction_id"].dropna()))
+b_ret = b_buy.groupby("bucket", observed=True)["returned"].agg(["size", "mean"])
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.bar(b_ret.index.astype(str), b_ret["mean"] * 100, 0.55, color=[BLUE] * 3 + [ORANGE])
+for x, (n, r) in enumerate(b_ret.values):
+    ax.text(x, r * 100 + 0.5, f"{r:.0%} (n={n:,.0f})", ha="center", color=INK, fontsize=10)
+ax.set_xlabel("Share of the purchase paid with points")
+ax.set_ylabel("% of purchases with a return")
+ax.set_title("Purchases paid mostly with points are returned 2.4× as often", loc="left", color=INK, fontsize=13)
+fig.tight_layout()
+plt.show()
 
 # %% [markdown]
 # ## 6. Repairs: churn and cost vs ARR at risk, with scenarios (Stream C, slides 7-8)
@@ -343,8 +399,10 @@ plt.show()
 # - **Slow repairs go with churn:** 24% churn when a user's typical turnaround is over 20 days, vs 11–13% otherwise.
 # - **Repairs cost $134K a year, but repair users hold 77% of ARR.** Scrapping them pays off only if repairs cause
 #   **less than 9%** of the churn gap (an effect under ~4.6 pts). The churn model (section 8 / D-4) puts the effect at
-#   5–9 pts after controlling for engagement: **just above break-even**. Best estimate: scrapping repairs saves $134K
-#   but loses $148K–$248K of profit, a net loss of **~$15K–$115K a year**. Repairs pay for themselves, but only just.
+#   5–9 pts after controlling for engagement: **around break-even**. Best estimate (D-4, scoring each repair user's own
+#   ARR): closing repairs saves $134K but puts $77K–$201K of profit at risk, a net effect between **saving ~$57K and
+#   losing ~$67K a year**. Applying the average effect to all users (below) gives a net loss of $15K–$115K. Either way
+#   the stakes are under 1% of revenue: scrapping repairs is not the saving leadership expects.
 # - **No sign of outerwear cannibalization.** Outerwear did fall 12% after launch, but repair users' outerwear spend
 #   *rose* 10%. The whole drop came from customers who never used repairs.
 
@@ -601,12 +659,12 @@ plt.show()
 
 # %% [markdown]
 # ## 8. Recommendation, KPIs & risks (Stream D, slide 10)
-# *DRAFT: repairs row confirmed by C-1/C-2 (section 6); loyalty row to confirm with B-1.*
-#
-# **Answer:** not as planned. Revenue recovered from fewer, older customers spending more (section 3, A), so the
-# gap is keeping customers, not rewarding the ones who stay. **Keep free repairs:** repair users churn 15% vs 66%
-# for similar non-users, and scrapping saves $134K a year but risks $366K–$1.47M of profit (section 6). **Fix
-# loyalty's profit before expanding it.**
+# **Answer:** not as planned. Revenue recovered from fewer, older customers spending more (sections 3–4), so the
+# gap is keeping customers, not rewarding the ones who stay. **Keep free repairs:** repair users churn far less than
+# similar customers, closing them is roughly break-even on profit (between +$57K and −$67K a year, section 6), and they
+# don't cannibalize outerwear. **Don't expand loyalty as it stands:** members spend more, but mostly because the best
+# customers join; membership doesn't keep customers, points now cost ~6% of revenue and rising, and heavy-points
+# purchases are returned 2.4× as often (section 5).
 
 # %%
 since_launch = visits[visits["date"] >= C.LOYALTY_LAUNCH]
@@ -619,8 +677,8 @@ pd.Series({
 # %% [markdown]
 # | Area | Recommendation | KPI to track (target) | Risk to watch |
 # |---|---|---|---|
-# | Repairs | Keep free repairs, with a 20-day turnaround target | Churn of repair users vs similar non-users (now 15% vs 66%); turnaround ≤ 20 days (over 20 days: 24% churn vs 11–13%) | Some of the gap is self-selection; the case holds unless repairs cause under 9% of it |
-# | Loyalty | Redesign before expanding: reward visits and retention, not just spend | Profit per member after redemptions; redemptions ≤ [__]% of revenue (now 5.0%) | Extra member revenue reaches profit at about half the normal rate |
+# | Repairs | Keep free repairs, with a 20-day turnaround target | Churn of repair users vs similar non-users (now 15% vs 66%); turnaround ≤ 20 days (over 20 days: 24% churn vs 11–13%) | Some of the gap is self-selection; the churn model puts the true effect near break-even (5–9 pts) |
+# | Loyalty | Redesign before expanding: reward visits and retention, not just spend; cap the share of a purchase payable in points | Profit per member after redemptions vs matched non-members; redemptions ≤ 5% of revenue (now 5.9%); tier retention | Points cost rises as balances build; membership shows no retention effect after controls |
 # | Acquisition | Judge campaigns on retention, not sign-ups | 6- and 12-month return rate of new customers (Pilates: 52% vs 81%) | Campaign customers churn after the offer ends |
 # | Customer base | Win back 18–24s on the staples the competitor undercut, led by leggings | New 18–24 customers per month; active repeat customers vs pre-competitor (now 94) | A price war erodes margin; growth depends on fewer, older customers |
 #

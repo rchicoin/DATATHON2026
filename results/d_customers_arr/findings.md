@@ -24,12 +24,12 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 - **So what for the recommendation:** scrapping repairs is **not** the clear saving leadership expects: at best ~$57K a year (under 1% of revenue), at worst a ~$67K loss, while risking customers who hold 77% of ARR, with no cannibalization (C F4). Keep repairs, but make them pay clearly: faster turnaround (C F2) and lower cost per repair. Loyalty membership doesn't keep customers. Use the at-risk list for targeted win-back offers.
 - **Handed to D?** yes (own stream)
 
-## F4. DRAFT recommendation: keep repairs, fix loyalty's profit before expanding it
-- **Claim:** Leadership's plan (expand loyalty, scrap repairs) rests on "loyalty drove the recovery". The evidence so far says revenue came back from **fewer, older customers spending more** (D-1 F2, A F4/F9), and campaigns didn't keep new customers (D-2 F3). Loyalty lifts member revenue, but only **~30–34%** of the extra reaches profit (B early: 25–34 +$232 revenue / +$69 profit; 35–44 +$382 / +$131), vs the store's **57%** margin since launch. Redeemed points cost **$797K (5.0% of revenue)** since launch.
-- **Repairs (C, confirmed):** repair users churn 15% vs 66% for matched non-users still buying (C F1). Scrapping saves $134K a year but risks $366K–$1.47M of profit; it only pays off if repairs cause under 9% of the gap (C F3). Over-20-day turnaround goes with 24% churn vs 11–13% (C F2).
-- **Draft answer:** keep free repairs with a 20-day turnaround target. Don't expand loyalty as it stands; redesign it to reward visits and retention. Judge campaigns on 12-month retention. Win back 18–24s on undercut staples (leggings).
-- **Evidence:** `summary.py` section 8; B's `results/b_loyalty/loyalty_analysis.ipynb` (early, not yet in B's findings).
-- **Confidence / caveats:** medium. B's numbers are early and not yet matched on pre-launch spend; the member definition still needs checking. The repairs half rests on C's 25/50/100% scenarios: it holds unless repairs cause under 9% of the churn gap.
+## F4. Recommendation: keep repairs, don't expand loyalty as it stands (reconciled with B, C and F5)
+- **Claim:** Leadership's plan (expand loyalty, scrap repairs) rests on "loyalty drove the recovery". The evidence says revenue came back from **fewer, older customers spending more** (D-1 F2, A F4/F9), and campaigns didn't keep new customers (D-2 F3). **Loyalty (B, matched):** members grew spend $1,110 more than similar non-members in the year after launch, and 55% of that reached profit (the normal margin), but joiners were already the best customers (A F11) and membership has no retention effect after controls (F5). Redeemed points cost **$797K (5.0% of revenue)** since launch and **$413K (5.9%)** in the last 12 months, still rising. *(Corrected: an earlier draft said only ~30–34% of extra member revenue reached profit; the matched comparison doesn't support that.)*
+- **Repairs (C + F5):** repair users churn 15% vs 66% for matched non-users still buying (C F1). After controls the effect is 5–9 pts, so closing repairs nets between **+$57K and −$67K a year**: roughly break-even, not the saving leadership expects. No outerwear cannibalization (C F4). Over-20-day turnaround goes with 24% churn vs 11–13% (C F2).
+- **Answer:** keep free repairs with a 20-day turnaround target. Don't expand loyalty as it stands; redesign it to reward visits and retention and cap the share of a purchase payable in points. Judge campaigns on 12-month retention. Win back 18–24s on undercut staples (leggings).
+- **Evidence:** `summary.py` sections 5, 6 and 8; `analysis/b_loyalty/b_loyalty.py`.
+- **Confidence / caveats:** medium. Members and repair users both self-select; the matched comparisons and the churn model reduce this but don't remove it.
 - **So what for the recommendation:** this is the recommendation. Confirm at the 2:00 check-in.
 - **Handed to D?** yes (own stream)
 
@@ -51,7 +51,7 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 - **Handed to D?** yes (own stream)
 
 ## F1. ARR fell 11% in the year after the competitor opened, then rose 21% to a new high of $6.67M
-- **Claim:** ARR (trailing-12-month repeat-customer revenue) was $6.23M when the competitor opened (Mar 2024). It fell every month to a low of **$5.53M in Feb 2025**, then rose to **$6.67M in Oct 2026**: +21% from the low, +7% above the pre-competitor level. By age band, ARR from Feb 2024 to Oct 2026 was **18–24 −46%**, 25–34 +9%, 35–44 +29%, 45–54 +20%, 55+ +20%.
+- **Claim:** ARR (trailing-12-month repeat-customer revenue) was $6.23M when the competitor opened (Mar 2024). It fell every month to a low of **$5.53M in Feb 2025**, then rose to **$6.67M in Oct 2026**: +21% from the low, **+6% above the pre-competitor level ($6.29M in Feb 2024, the last full month before the competitor; same baseline as A F12)**. By age band, ARR from Feb 2024 to Oct 2026 was **18–24 −46%**, 25–34 +9%, 35–44 +29%, 45–54 +20%, 55+ +20%.
 - **Evidence:** `analysis/d_customers_arr/d1_arr.ipynb`, sections 1 and 3.
 - **Chart:** `results/d_customers_arr/d1_arr_line.png` (slide 3)
 - **Confidence / caveats:** high for the numbers. ARR is a 12-month rolling total, so it lags real changes by up to a year. The low in Feb 2025 is when the last pre-competitor month drops out of the window, so don't read the timing of the turn as "the Pilates push or repairs caused it". Use F2 for timing.

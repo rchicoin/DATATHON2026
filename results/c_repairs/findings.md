@@ -4,6 +4,12 @@ Owner: Stream C · Last updated: 2026-11-21
 
 <!-- Newest at the top. -->
 
+## F5. Who uses repairs: the store's best loyalty members (should-have: repair-user profile)
+- **Claim:** Among customers with ARR today (2,086 repair users vs 3,152 others), **97% of repair users are loyalty members (vs 76%) and 64% have reached Gold (vs 8%)**. They're a bit older (35+: 51% vs 42%; 18–24: 11% vs 17%), more often Outdoor-interested (32% vs 24%), and come through the same channels. Each holds **$2,456 of ARR vs $494** (5×).
+- **Evidence:** `load("customers")`, active customers (`arr_12m > 0`), crosstab of `used_repair` by age band, membership, `max_tier`, channel and interests (added during the cross-stream review, 2026-11-21).
+- **Confidence / caveats:** high (descriptive). Doesn't say repairs *made* them Gold.
+- **So what for the recommendation:** leadership's two moves collide. Scrapping repairs takes a perk away from exactly the Gold members that expanding loyalty is meant to reward.
+
 ## F4. No sign that repairs cannibalize outerwear: the outerwear drop came from customers who never used repairs
 - **Claim:** Outerwear revenue did fall after repairs launched, but not because of repairs. Repair users' outerwear spending *rose*. Customers who repaired a jacket cut jacket spending less than customers who repaired only activewear.
 - **Evidence:**
@@ -15,8 +21,8 @@ Owner: Stream C · Last updated: 2026-11-21
 - **So what for the recommendation:** Leadership's second reason for scrapping repairs doesn't hold up. The outerwear decline is store-wide and comes from customers outside the program.
 - **Handed to D?** no
 
-## F3. Repairs cost $134K a year and pay for themselves, but only just: best estimate, scrapping loses ~$15K–$115K a year
-- **Update (after D's churn model, D F5):** the break-even is a repair effect of 4.6 pts (9% of the 51-pt gap). D's churn model, which controls for visits, spend, recency, tenure, membership and demographics, puts the effect at **5.1–8.6 pts** (10–17% of the gap): just above break-even. Best estimate: profit lost **$148K–$248K** vs **$134K** saved, so a net loss of **$15K–$115K a year**. The 25/50/100% rows below are what-ifs, and the model says 50% and 100% are too high. `results/c_repairs/c2_scenarios.csv` now has the model rows.
+## F3. Repairs cost $134K a year and roughly pay for themselves: closing them nets between +$57K and −$67K a year
+- **Update (reconciled with D F5, final):** the break-even is a repair effect of 4.6 pts (9% of the 51-pt gap). D's churn model, which controls for visits, spend, recency, tenure, membership and demographics, puts the effect at **5.1–8.6 pts** (10–17% of the gap): around break-even. **Headline number = D's per-customer forecast** (each repair user's own churn change × their own ARR, plus next year's new users): profit at risk **$77K–$201K** vs **$134K** saved, so closing **saves ~$57K (boosted trees) or loses ~$67K (logistic) a year**. Applying the average effect to every user's ARR (the "Churn model" rows of `c2_scenarios.csv`) gives a net loss of $15K–$115K; it's cruder because the trees model finds the effect concentrated in lower-ARR users. The 25/50/100% rows below are what-ifs, and the model says 50% and 100% are too high. `results/c_repairs/c2_scenarios.csv` now has the model rows.
 - **Claim:** Repair users hold 77% of company ARR. Losing even a small part of their retention costs more profit than the program costs, but the margin is thin.
 - **Evidence:** Last 12 months (Nov 2025 to Oct 2026): repair cost $133,542 (2,384 outerwear + 1,459 activewear drop-offs). Repair users (2,175) hold $5.12M of $6.67M ARR. Margin before repair cost 56%. Churn gap 50.9 pts (F1).
 
@@ -28,7 +34,7 @@ Owner: Stream C · Last updated: 2026-11-21
 
   Break-even: 9% (7% with the plain matched gap). `analysis/c_repairs/c2_cost_vs_arr.ipynb`, `results/c_repairs/c2_scenarios.csv`.
 - **Chart:** `results/c_repairs/c2_cost_vs_profit.png`
-- **Confidence / caveats:** Medium. It's a yearly steady-state estimate: it assumes at-risk customers would lose their whole ARR and churn at the matched non-user rate. Doesn't count cannibalization (repairs may reduce new outerwear sales; not yet tested). The conclusion holds unless repairs cause almost none of the gap.
+- **Confidence / caveats:** Medium. It's a yearly steady-state estimate: it assumes at-risk customers would lose their whole ARR and churn at the matched non-user rate. Cannibalization was tested separately (F4) and not found. Margin: 56% here (repair users only) vs 57.2% in D F5 (all customers); the difference doesn't change any conclusion.
 - **So what for the recommendation:** Keep free repairs, but present them as roughly paying for themselves, not a big win. Because the margin is thin, faster turnaround (F2) and lower cost per repair are what make the program clearly worth it.
 - **Handed to D?** no
 
