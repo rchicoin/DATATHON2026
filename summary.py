@@ -161,8 +161,158 @@ plt.show()
 
 # %% [markdown]
 # ## 4. Competitor impact & seasonality (Stream A, slide 4)
+# The competitor's opening date isn't in the brief, so we **inferred it from the data**: March 2024, the month
+# 18–24 revenue drops sharply vs the same month a year earlier. Every comparison below uses the **same months
+# year over year**, so seasonality cancels out. Full analysis: `analysis/a_competitor/` (A-1, A-2, A-3).
+#
+# - **The competitor took young customers, and they never came back.** 18–24 revenue fell ~45% and is still ~45% below
+#   2023; every other age band recovered and grew. The store-wide recovery comes from customers aged 25 and over.
+# - **It broke the pipeline of young customers.** New 18–24 customers halved, and existing ones went from being as loyal
+#   as everyone else to the least likely to return.
+# - **Seasonality is large and must be controlled for:** December is ~1.9× an average month; outerwear makes ~half its
+#   sales in Nov–Jan. Repairs launched in April, at the start of outerwear's slowest season.
 
 # %%
+a_p = lines[lines["row_type"] == C.PURCHASE].copy()
+a_p["year"], a_p["mon"] = a_p["date"].dt.year, a_p["date"].dt.month
+A_AGES = ["18-24", "25-34", "35-44", "45-54", "55+"]
+
+
+def a_mar_oct(df, year):
+    """Mar–Oct of a year: the longest window that exists in all of 2023–2026 (data ends Oct 2026)."""
+    return df[(df["year"] == year) & df["mon"].between(3, 10)]
+
+
+a_rev = pd.DataFrame({y: a_mar_oct(a_p, y).groupby("age_band")["revenue"].sum() for y in [2023, 2024, 2025, 2026]})
+a_cat = pd.DataFrame({y: a_mar_oct(a_p, y).groupby("category")["revenue"].sum() for y in [2023, 2024, 2025]})
+a_lost = (a_rev[2024] - a_rev[2023]).loc[A_AGES]
+
+a_new = customers[customers["signup_date"] >= C.DATA_START]
+a_new = a_new[a_new["signup_date"].dt.month.between(3, 10)]
+a_new = a_new.groupby([a_new["signup_date"].dt.year, "age_band"]).size().unstack()
+
+pd.Series({
+    "18-24 revenue, Mar–Oct 2024 vs 2023 (%)": (a_rev.loc["18-24", 2024] / a_rev.loc["18-24", 2023] - 1) * 100,
+    "18-24 revenue, Mar–Oct 2026 vs 2023 (%)": (a_rev.loc["18-24", 2026] / a_rev.loc["18-24", 2023] - 1) * 100,
+    "25+ revenue, Mar–Oct 2026 vs 2023 (%)": (a_rev.loc[A_AGES[1:], 2026].sum() / a_rev.loc[A_AGES[1:], 2023].sum() - 1) * 100,
+    "18-24 share of revenue lost in 2024 (%)": a_lost["18-24"] / a_lost.sum() * 100,
+    "18-24 share of 2023 revenue (%)": a_rev.loc["18-24", 2023] / a_rev[2023].sum() * 100,
+    "New 18-24 customers, Mar–Oct 2024 vs 2023 (%)": (a_new.loc[2024, "18-24"] / a_new.loc[2023, "18-24"] - 1) * 100,
+    "Leggings revenue, Mar–Oct 2024 vs 2023 (%)": (a_cat.loc["Leggings", 2024] / a_cat.loc["Leggings", 2023] - 1) * 100,
+    "Outerwear revenue, Mar–Oct 2025 vs 2023 (%)": (a_cat.loc["Outerwear", 2025] / a_cat.loc["Outerwear", 2023] - 1) * 100,
+}).round(1)
+
+# %% [markdown]
+# **Who was hit, and when.** Each month vs the same month a year earlier. 18–24 revenue was growing until February 2024,
+# then ran 40–55% below the prior year from March, which is how we date the competitor's opening. From March 2025
+# each month is compared with a weak post-competitor month, so the jumps there are partly a bounce from a low base.
+
+# %%
+a_monthly = a_p.pivot_table(index="month", columns="age_band", values="revenue", aggfunc="sum")
+a_monthly["All customers"] = a_monthly[A_AGES + ["Unknown"]].sum(axis=1)
+a_yoy = a_monthly.pct_change(12, fill_method=None).loc["2023-11-01":] * 100
+
+fig, ax = plt.subplots(figsize=(11, 5))
+for a in A_AGES[1:]:
+    ax.plot(a_yoy.index, a_yoy[a], color=INK2, lw=1, alpha=0.45)
+ax.plot(a_yoy.index, a_yoy["All customers"], color=BLUE, label="All customers")
+ax.plot(a_yoy.index, a_yoy["18-24"], color=ORANGE, lw=2.6, label="Ages 18–24")
+ax.plot([], [], color=INK2, lw=1, alpha=0.45, label="Other age bands")
+ax.axhline(0, color=INK2, lw=1)
+ax.set_ylim(-65, 70)
+mark_events(ax, 70)
+ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+ax.legend(loc="lower right", frameon=False)
+ax.set_title("From March 2024, 18–24 revenue ran 40–55% below the year before; other ages dipped and recovered",
+             loc="left", color=INK, fontsize=13)
+ax.set_ylabel("Revenue vs same month a year earlier")
+fig.tight_layout()
+plt.show()
+
+# %% [markdown]
+# **The competitor broke the pipeline of young customers.** Before it opened, 18–24s were as likely as anyone to come
+# back the following winter. Across the opening their return rate fell twice as much as older customers', and it has
+# stayed behind. New 18–24 customers halved over the same period, so active 18–24 customers fell from 1,513 (Mar–Oct 2023)
+# to 725 (Mar–Oct 2026). Windows are Nov–Feb because Nov 2022 – Feb 2023 → Nov 2023 – Feb 2024 is the only
+# year-on-year comparison that sits entirely before the competitor.
+
+# %%
+a_age = customers.set_index("customer_id")["age_band"]
+A_WINTERS = [("2022-11-01", "2023-03-01"), ("2023-11-01", "2024-03-01"),
+             ("2024-11-01", "2025-03-01"), ("2025-11-01", "2026-03-01")]
+
+
+def a_active(start, end):
+    return set(a_p.loc[(a_p["date"] >= start) & (a_p["date"] < end), "customer_id"])
+
+
+a_ret = {}
+for (s0, e0), (s1, e1), label in zip(A_WINTERS, A_WINTERS[1:],
+                                     ["Before competitor", "Competitor opens\nin between", "After"]):
+    base_ids = pd.Series(sorted(a_active(s0, e0)))
+    back = base_ids.isin(a_active(s1, e1))
+    young = base_ids.map(a_age).eq("18-24").values
+    a_ret[label] = {"Ages 18–24": back[young].mean() * 100,
+                    "Ages 25+": back[base_ids.map(a_age).isin(A_AGES[1:]).values].mean() * 100}
+a_ret = pd.DataFrame(a_ret).T
+
+fig, ax = plt.subplots(figsize=(11, 4.6))
+a_x = range(len(a_ret))
+for i, (col, colr) in enumerate([("Ages 18–24", ORANGE), ("Ages 25+", BLUE)]):
+    xs = [x + (i - 0.5) * 0.36 for x in a_x]
+    ax.bar(xs, a_ret[col], 0.36, color=colr, label=col)
+    for x, v in zip(xs, a_ret[col]):
+        ax.text(x, v + 1, f"{v:.0f}%", ha="center", color=INK, fontsize=10)
+ax.set_xticks(list(a_x), a_ret.index)
+ax.set_ylim(0, 65)
+ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+ax.legend(loc="upper right", frameon=False)
+ax.set_title("Young customers were as loyal as everyone before the competitor; since then they return least",
+             loc="left", color=INK, fontsize=13)
+ax.set_ylabel("Bought again the next winter (Nov–Feb)")
+fig.tight_layout()
+plt.show()
+
+a_new[A_AGES].rename_axis("Mar–Oct of").astype(int)
+
+# %% [markdown]
+# **Seasonality to control for.** Seasonal index = average revenue in a calendar month ÷ that row's average month × 100,
+# over Nov 2022 – Oct 2026 (every month appears 4 times). Four calculation methods agree within 6 points (A-2 notebook).
+# Black Friday weekend and Boxing Week are the only discounts: 9 days and ~5% of yearly revenue. A sale day sells
+# ~1.4× an ordinary Nov–Dec day, so most of the December peak is full-price holiday shopping.
+# **For any before/after comparison:** loyalty launched in June (index 76) and repairs in April (82), both quiet months,
+# and repairs launched as outerwear entered its slowest months.
+
+# %%
+from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+
+A_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+a_cm = a_p.groupby(["category", "mon"])["revenue"].sum().unstack() / 4
+a_heat = a_cm.div(a_cm.mean(axis=1), axis=0) * 100
+a_heat = a_heat.loc[["Outerwear", "Hoodies & Sweaters", "Tops", "Leggings", "Accessories",
+                     "Sports Bras", "Tank Tops", "Shorts"]]
+a_store = a_p.groupby("mon")["revenue"].sum() / 4
+a_heat.loc["Whole store"] = a_store / a_store.mean() * 100
+
+fig, ax = plt.subplots(figsize=(11, 5))
+a_cmap = LinearSegmentedColormap.from_list("blue_orange", [BLUE, "#fcfcfb", ORANGE])
+ax.imshow(a_heat.values, cmap=a_cmap, norm=TwoSlopeNorm(vcenter=100, vmin=25, vmax=300), aspect="auto")
+ax.set_xticks(range(12), A_MONTHS)
+ax.set_yticks(range(len(a_heat)), a_heat.index)
+ax.axhline(len(a_heat) - 1.5, color="#fcfcfb", lw=4)
+ax.grid(False)
+ax.tick_params(length=0)
+for i in range(a_heat.shape[0]):
+    for j in range(12):
+        v = a_heat.iat[i, j]
+        ax.text(j, i, f"{v:.0f}", ha="center", va="center", fontsize=9,
+                color="#fcfcfb" if (v > 220 or v < 40) else INK,
+                fontweight="bold" if a_heat.index[i] == "Whole store" else "normal")
+ax.set_title("December is ~2× a normal month; winter gear peaks ~3× in Dec, summer gear in May–Aug",
+             loc="left", color=INK, fontsize=13)
+ax.set_xlabel("Seasonal index (100 = an average month for that row)")
+fig.tight_layout()
+plt.show()
 
 # %% [markdown]
 # ## 5. Loyalty program: revenue vs profit, points-funded returns (Stream B, slides 5-6)
