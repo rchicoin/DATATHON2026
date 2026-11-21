@@ -46,6 +46,11 @@ GAP = -gap_tbl.loc["Matched, still buying after launch", "gap"]          # as a 
 GAP_PLAIN = -gap_tbl.loc["Matched", "gap"]
 print(f"Churn gap: {GAP:.1%} (plain matched: {GAP_PLAIN:.1%})")
 
+# Best estimate of the repair effect, from Stream D's churn model (analysis/d_customers_arr/d3_churn_model):
+# predicted churn of repair users with repair use switched off, everything else held fixed. It controls for
+# visits, spend, recency, tenure, membership and demographics, so it's stricter than C-1's matching.
+MODEL_EFFECT = {"boosted trees": 0.0515, "logistic": 0.0862}
+
 # %% [markdown]
 # ## Inputs: last 12 months (Nov 2025 to Oct 2026)
 
@@ -86,13 +91,18 @@ def scenario(share: float, gap: float = GAP) -> dict:
             "Repair cost saved": repair_cost, "Net profit from scrapping": repair_cost - profit_lost}
 
 SHARES = [0.25, 0.50, 1.00]
-scen = pd.DataFrame({f"{s:.0%} caused by repairs": scenario(s) for s in SHARES}).T
+scen = pd.DataFrame({
+    **{f"Churn model, {k} ({v:.1%} pts)": scenario(v / GAP) for k, v in MODEL_EFFECT.items()},
+    **{f"{s:.0%} caused by repairs": scenario(s) for s in SHARES},
+}).T
 scen.to_csv(OUT / "c2_scenarios.csv")
 
 BREAK_EVEN = repair_cost / (users_arr * GAP * margin)
 BREAK_EVEN_PLAIN = repair_cost / (users_arr * GAP_PLAIN * margin)
 print(f"Scrapping repairs pays off only if less than {BREAK_EVEN:.0%} of the churn gap is caused by repairs "
-      f"({BREAK_EVEN_PLAIN:.0%} using the plain matched gap).")
+      f"({BREAK_EVEN_PLAIN:.0%} using the plain matched gap), i.e. a repair effect under {BREAK_EVEN * GAP:.1%} pts.")
+print(f"Churn model puts the effect at {min(MODEL_EFFECT.values()):.1%}–{max(MODEL_EFFECT.values()):.1%} pts "
+      f"({min(MODEL_EFFECT.values()) / GAP:.0%}–{max(MODEL_EFFECT.values()) / GAP:.0%} of the gap): just above break-even.")
 scen.style.format("${:,.0f}")
 
 # %% [markdown]
@@ -104,10 +114,12 @@ plt.rcParams.update({"font.size": 11, "axes.edgecolor": MUTED, "axes.labelcolor"
                      "xtick.color": MUTED, "ytick.color": MUTED, "figure.facecolor": SURFACE,
                      "axes.facecolor": SURFACE})
 
-labels = ["Cost saved\nby scrapping"] + [f"Profit lost if\n{s:.0%} is causal" for s in SHARES]
-vals = [repair_cost] + list(scen["Profit lost"])
+SCENARIO = "#f4b49a"   # lighter orange: what-if scenarios, less likely than the model estimate
+labels = ["Cost saved\nby scrapping", "Best estimate,\nlow", "Best estimate,\nhigh", "If 25%\nis causal", "If 50%\nis causal"]
+vals = [repair_cost] + [scenario(v / GAP)["Profit lost"] for v in sorted(MODEL_EFFECT.values())] \
+       + [scenario(s)["Profit lost"] for s in (0.25, 0.50)]
 fig, ax = plt.subplots(figsize=(8, 4.6))
-bars = ax.bar(labels, vals, 0.55, color=[COST] + [LOST] * len(SHARES))
+bars = ax.bar(labels, vals, 0.6, color=[COST, LOST, LOST, SCENARIO, SCENARIO])
 for b, v in zip(bars, vals):
     ax.text(b.get_x() + b.get_width() / 2, v + max(vals) * 0.015, f"${v / 1e3:,.0f}K",
             ha="center", color=INK, fontsize=10)
@@ -115,9 +127,9 @@ ax.axhline(repair_cost, color=COST, linewidth=1.2, linestyle="--")
 ax.spines[["top", "right", "left"]].set_visible(False)
 ax.yaxis.grid(True, color="#e4e3df", linewidth=0.8)
 ax.set_axisbelow(True)
-ax.yaxis.set_major_formatter(lambda v, _: f"${v / 1e6:.1f}M")
-ax.set_ylabel("Per year")
-ax.set_title(f"Scrapping repairs pays off only if under {BREAK_EVEN:.0%} of the churn gap is causal",
-             loc="left", color=INK, fontsize=13)
+ax.yaxis.set_major_formatter(lambda v, _: f"${v / 1e3:,.0f}K")
+ax.set_ylabel("Profit per year")
+ax.set_title("Repairs pay for themselves, but only just\n(best estimate from the churn model; lighter bars are what-ifs)",
+             loc="left", color=INK, fontsize=12)
 fig.tight_layout()
 fig.savefig(OUT / "c2_cost_vs_profit.png", dpi=200)

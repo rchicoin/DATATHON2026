@@ -342,7 +342,9 @@ plt.show()
 #   pre-launch spend who were still buying after launch (a gap of 51 points).
 # - **Slow repairs go with churn:** 24% churn when a user's typical turnaround is over 20 days, vs 11–13% otherwise.
 # - **Repairs cost $134K a year, but repair users hold 77% of ARR.** Scrapping them pays off only if repairs cause
-#   **less than 9%** of the churn gap. Even at 25%, the store loses ~$366K of profit to save $134K.
+#   **less than 9%** of the churn gap (an effect under ~4.6 pts). The churn model (section 8 / D-4) puts the effect at
+#   5–9 pts after controlling for engagement: **just above break-even**. Best estimate: scrapping repairs saves $134K
+#   but loses $148K–$248K of profit, a net loss of **~$15K–$115K a year**. Repairs pay for themselves, but only just.
 # - **No sign of outerwear cannibalization.** Outerwear did fall 12% after launch, but repair users' outerwear spend
 #   *rose* 10%. The whole drop came from customers who never used repairs.
 
@@ -423,7 +425,10 @@ c_turn.round(1)
 # **Cost saved vs profit at risk (scenarios).** Cost saved = repair cost in the last 12 months (Nov 2025 – Oct 2026).
 # ARR at risk = repair users' ARR × the 51-point churn gap. Profit at risk = ARR at risk × repair users' margin before
 # repair cost (repair cost is already in "cost saved"). We can't prove how much of the gap repairs *cause*, so we
-# assume 25% / 50% / 100% and solve for the break-even share. Cannibalization is tested separately below and not found.
+# assume 25% / 50% / 100% and solve for the break-even share. Our **best estimate** of the true effect comes from
+# Stream D's churn model (`analysis/d_customers_arr/d3_churn_model.ipynb`): switching repair use off for repair users,
+# with visits, spend, recency, tenure, membership and demographics held fixed, raises predicted churn by 5.1 pts
+# (boosted trees) to 8.6 pts (logistic), i.e. 10–17% of the matched gap. Cannibalization is tested separately below.
 
 # %%
 c_since = C.AS_OF_DATE - pd.DateOffset(months=C.ARR_WINDOW_MONTHS)
@@ -434,30 +439,41 @@ c_margin = (c_uv["profit"] + c_uv["repair_cost"]).sum() / c_uv["revenue"].sum()
 c_users_arr = c_users["arr_12m"].sum()
 C_BREAK_EVEN = c_cost / (c_users_arr * C_GAP * c_margin)
 
-c_scen = pd.DataFrame({f"{s:.0%} caused by repairs": {
-    "ARR lost ($K)": c_users_arr * C_GAP * s / 1e3,
-    "Profit lost ($K)": c_users_arr * C_GAP * s * c_margin / 1e3,
-    "Repair cost saved ($K)": c_cost / 1e3,
-    "Net from scrapping ($K)": (c_cost - c_users_arr * C_GAP * s * c_margin) / 1e3,
-} for s in [0.25, 0.5, 1.0]}).T
+C_MODEL_EFFECT = {"Best estimate, low (churn model, boosted trees)": 0.0515,   # from d3_churn_model (Stream D)
+                  "Best estimate, high (churn model, logistic)": 0.0862}
+
+
+def c_scenario(effect):
+    """Yearly $K if repair users lose `effect` (share of customers) of retention when repairs are scrapped."""
+    return {"ARR lost ($K)": c_users_arr * effect / 1e3,
+            "Profit lost ($K)": c_users_arr * effect * c_margin / 1e3,
+            "Repair cost saved ($K)": c_cost / 1e3,
+            "Net from scrapping ($K)": (c_cost - c_users_arr * effect * c_margin) / 1e3}
+
+
+c_scen = pd.DataFrame({**{k: c_scenario(v) for k, v in C_MODEL_EFFECT.items()},
+                       **{f"What-if: {s:.0%} of the gap caused by repairs": c_scenario(C_GAP * s)
+                          for s in [0.25, 0.5, 1.0]}}).T
 
 print(f"Repair cost, last 12 months: ${c_cost:,.0f} · repair users' ARR: ${c_users_arr/1e6:.2f}M "
       f"({c_users_arr / c_cust['arr_12m'].sum():.0%} of company ARR) · margin before repair cost: {c_margin:.0%}")
-print(f"Scrapping repairs pays off only if less than {C_BREAK_EVEN:.0%} of the churn gap is caused by repairs.")
+print(f"Scrapping repairs pays off only if less than {C_BREAK_EVEN:.0%} of the churn gap is caused by repairs "
+      f"(an effect under {C_BREAK_EVEN * C_GAP:.1%} pts). Churn model: "
+      f"{min(C_MODEL_EFFECT.values()):.1%}–{max(C_MODEL_EFFECT.values()):.1%} pts.")
 c_scen.round(0)
 
 # %%
-c_labels = ["Cost saved\nby scrapping"] + [f"Profit lost if\n{s} is causal" for s in ["25%", "50%", "100%"]]
-c_vals = [c_cost / 1e3] + list(c_scen["Profit lost ($K)"])
+c_labels = ["Cost saved\nby scrapping", "Best estimate,\nlow", "Best estimate,\nhigh", "If 25%\nis causal", "If 50%\nis causal"]
+c_vals = [c_cost / 1e3] + list(c_scen["Profit lost ($K)"].iloc[:4])
 fig, ax = plt.subplots(figsize=(11, 4.6))
-ax.bar(c_labels, c_vals, 0.5, color=[BLUE] + [ORANGE] * 3)
+ax.bar(c_labels, c_vals, 0.55, color=[BLUE, ORANGE, ORANGE, "#f4b49a", "#f4b49a"])
 for x, v in enumerate(c_vals):
-    ax.text(x, v + 20, f"${v:,.0f}K", ha="center", color=INK, fontsize=10)
+    ax.text(x, v + 10, f"${v:,.0f}K", ha="center", color=INK, fontsize=10)
 ax.axhline(c_cost / 1e3, color=BLUE, lw=1.2, ls=(0, (3, 3)))
-ax.yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f"${x/1e3:.1f}M"))
-ax.set_title(f"Scrapping repairs pays off only if under {C_BREAK_EVEN:.0%} of the churn gap is caused by repairs",
+ax.yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f"${x:,.0f}K"))
+ax.set_title("Repairs pay for themselves, but only just (lighter bars are what-ifs, not estimates)",
              loc="left", color=INK, fontsize=13)
-ax.set_ylabel("Per year")
+ax.set_ylabel("Profit per year")
 fig.tight_layout()
 plt.show()
 

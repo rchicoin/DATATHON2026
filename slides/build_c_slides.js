@@ -84,7 +84,7 @@ statPanel(s7, [
   { big: "15% vs 66%", color: C.accent1, size: 36,
     label: "churn: repair users vs similar customers still buying after launch" },
   { big: "−51 pts", color: C.text1,
-    label: "churn gap we carry into the cost test (our conservative estimate)" },
+    label: "matched churn gap; a stricter model puts the part caused by repairs at 5–9 pts" },
   { big: "24%", color: C.accent2,
     label: "churn when repairs take over 20 days, vs 11–13% when faster" },
 ]);
@@ -97,42 +97,43 @@ s7.addNotes(
 - So we only compared customers who were shopping before repairs existed, with the same age and spending level. Repair users still churn 15% vs 81%.
 - More than half of those non-users had left before repairs even launched, so we also required them to still be buying afterwards. The gap is still 15% vs 66%: 51 points. That's the number we carry forward.
 - Turnaround matters: when repairs take over 20 days, churn doubles to 24%. That's a cheap thing to fix.
-- Caveat: this shows repair users stay, not that repairs alone make them stay. The next slide tests how much that matters.`);
+- Caveat: this shows repair users stay, not that repairs alone make them stay. Loyal customers would stay anyway. Reagan's churn model controls for how engaged people already were, and it says repairs themselves account for about 5–9 points of the gap. The next slide uses that.`);
 
 // ---------- Slide 8: cost vs profit at risk ----------
 const s8 = pres.addSlide({ masterName: "CHART_PANEL", sectionTitle: "Repairs" });
-s8.addText("Scrapping repairs costs more than it saves", { placeholder: "title" });
-s8.addText("Yearly repair cost vs profit lost if repairs explain 25%, 50% or 100% of the churn gap",
+s8.addText("Repairs pay for themselves, but only just", { placeholder: "title" });
+s8.addText("Yearly repair cost vs profit lost if repairs are scrapped: best estimate (dark) and what-ifs (light)",
   { placeholder: "body" });
 s8.addChart(pres.charts.BAR, [
-  { name: "Per year ($K)", labels: ["Cost saved by\nscrapping", "Profit lost if\n25% is causal",
-    "Profit lost if\n50% is causal", "Profit lost if\n100% is causal"], values: [134, 366, 733, 1465] },
+  { name: "Per year ($K)", labels: ["Cost saved by\nscrapping", "Profit lost:\nbest est. low", "Profit lost:\nbest est. high",
+    "What-if: 25%\nis causal", "What-if: 50%\nis causal"], values: [134, 148, 248, 366, 733] },
 ], {
   x: 0.5, y: 1.85, w: 8.1, h: 4.85, barDir: "col", barGapWidthPct: 55,
-  chartColors: [HEX.blue, HEX.orange, HEX.orange, HEX.orange],
+  chartColors: [HEX.blue, HEX.orange, HEX.orange, "F4B49A", "F4B49A"],
   showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: '"$"#,##0"K"',
-  valAxisMinVal: 0, valAxisMaxVal: 1600, valAxisMajorUnit: 400, valAxisLabelFormatCode: '"$"#,##0"K"',
+  valAxisMinVal: 0, valAxisMaxVal: 800, valAxisMajorUnit: 200, valAxisLabelFormatCode: '"$"#,##0"K"',
   valGridLine: { color: HEX.grid, size: 0.75 }, showLegend: false,
   ...AXIS, objectName: "Cost vs profit chart",
 });
 statPanel(s8, [
-  { big: "9%", color: C.accent1,
-    label: "scrapping only pays off if repairs cause less than 9% of the churn gap" },
+  { big: "$15K–$115K", color: C.accent2, size: 34,
+    label: "best-estimate yearly loss from scrapping repairs" },
   { big: "77%", color: C.text1,
     label: "of company ARR comes from the 2,175 repair users ($5.1M of $6.7M)" },
   { big: "+10%", color: C.accent1,
     label: "repair users' outerwear spend after launch: no sign of cannibalization" },
 ]);
-s8.addText("Cost = repair cost Nov 2025 – Oct 2026. Profit lost = repair users' ARR × 51-pt churn gap × share caused × 56% margin. Outerwear: 12 months before vs after launch.",
+s8.addText("Cost = repair cost Nov 2025 – Oct 2026. Profit lost = repair users' ARR × churn effect × 56% margin. Best estimate: churn model (5.1–8.6 pts); break-even 4.6 pts.",
   { placeholder: "source" });
 s8.addNotes(
-`Headline: repairs cost about $134K a year, but they protect much more profit than that.
+`Headline: repairs cost about $134K a year, and they protect a bit more profit than that. They pay for themselves, but only just.
 
-- Repair users are only 2,175 customers but bring in 77% of our repeat revenue.
-- We can't prove exactly how much of their loyalty is caused by repairs, so we tested three cases. Even if repairs explain only a quarter of the gap, scrapping them loses about $366K of profit to save $134K.
-- Break-even is 9%: repairs would have to explain almost none of the loyalty for cutting them to save money.
+- Repair users are only 2,175 customers but bring in 77% of our repeat revenue, so even a small drop in their loyalty is expensive.
+- Break-even: scrapping only saves money if repairs explain less than about 9% of the churn gap (under ~4.6 points).
+- Our best estimate, from the churn model, is that repairs account for 5–9 points. That's just above break-even: scrapping would save $134K but lose about $148K–$248K of profit, a net loss of about $15K–$115K a year.
+- The lighter bars are what-ifs. If repairs explain a quarter or half of the gap, the loss is much bigger, but the model says that's unlikely, so we don't lean on them.
 - Leadership's other worry was that repairs stop people buying new jackets. Outerwear did fall 12% store-wide, but repair users bought 10% MORE outerwear; the whole drop came from customers who never used repairs.
-- Recommendation: keep free repairs, and set a target of repairs back within 20 days.`);
+- Recommendation: keep free repairs, but treat them as break-even-plus, not a big win. Faster turnaround (under 20 days) and cheaper repairs are what make them clearly worth it.`);
 
 (async () => {
   const out = path.join(__dirname, "c_repairs_slides_7-8.pptx");

@@ -15,8 +15,9 @@ Owner: Stream C · Last updated: 2026-11-21
 - **So what for the recommendation:** Leadership's second reason for scrapping repairs doesn't hold up. The outerwear decline is store-wide and comes from customers outside the program.
 - **Handed to D?** no
 
-## F3. Repairs cost $134K a year; scrapping them pays off only if under 9% of the churn gap is caused by repairs
-- **Claim:** Repair users hold 77% of company ARR. Even if repairs explain only a quarter of their lower churn, losing them would cost far more profit than the program costs.
+## F3. Repairs cost $134K a year and pay for themselves, but only just: best estimate, scrapping loses ~$15K–$115K a year
+- **Update (after D's churn model, D F5):** the break-even is a repair effect of 4.6 pts (9% of the 51-pt gap). D's churn model, which controls for visits, spend, recency, tenure, membership and demographics, puts the effect at **5.1–8.6 pts** (10–17% of the gap): just above break-even. Best estimate: profit lost **$148K–$248K** vs **$134K** saved, so a net loss of **$15K–$115K a year**. The 25/50/100% rows below are what-ifs, and the model says 50% and 100% are too high. `results/c_repairs/c2_scenarios.csv` now has the model rows.
+- **Claim:** Repair users hold 77% of company ARR. Losing even a small part of their retention costs more profit than the program costs, but the margin is thin.
 - **Evidence:** Last 12 months (Nov 2025 to Oct 2026): repair cost $133,542 (2,384 outerwear + 1,459 activewear drop-offs). Repair users (2,175) hold $5.12M of $6.67M ARR. Margin before repair cost 56%. Churn gap 50.9 pts (F1).
 
   | Share of gap caused by repairs | ARR lost | Profit lost | Cost saved | Net from scrapping |
@@ -28,7 +29,7 @@ Owner: Stream C · Last updated: 2026-11-21
   Break-even: 9% (7% with the plain matched gap). `analysis/c_repairs/c2_cost_vs_arr.ipynb`, `results/c_repairs/c2_scenarios.csv`.
 - **Chart:** `results/c_repairs/c2_cost_vs_profit.png`
 - **Confidence / caveats:** Medium. It's a yearly steady-state estimate: it assumes at-risk customers would lose their whole ARR and churn at the matched non-user rate. Doesn't count cannibalization (repairs may reduce new outerwear sales; not yet tested). The conclusion holds unless repairs cause almost none of the gap.
-- **So what for the recommendation:** Keep free repairs. Scrapping saves $134K but risks $366K–$1.47M in profit.
+- **So what for the recommendation:** Keep free repairs, but present them as roughly paying for themselves, not a big win. Because the margin is thin, faster turnaround (F2) and lower cost per repair are what make the program clearly worth it.
 - **Handed to D?** no
 
 ## F2. Slow repairs go with higher churn: 24% when turnaround is over 20 days vs 11–13% otherwise
