@@ -172,7 +172,8 @@ plt.show()
 # share spent on leggings. **(b) What did young shoppers stop buying?** Change in 18–24 vs 25+ spending by category,
 # Mar–Oct 2024 vs Mar–Oct 2023. **(c) What would a leggings price-match cost?** Leggings sales in the last 12 months ×
 # the discount, if every leggings buyer gets it, compared with A F12: winning back half the lost young shoppers
-# is worth about $212K profit a year, about $430 per young shopper.
+# is worth at most about $195K profit a year before offer costs (912 lost young shoppers × $429 profit each × 50%;
+# decision #23 range $155K–$195K).
 
 # %%
 buys = lines[lines["row_type"] == C.PURCHASE].copy()
@@ -195,7 +196,7 @@ cat_change
 lg = last12(buys[buys["category"] == "Leggings"])
 lg_rev = lg["revenue"].sum()
 lg_cost = (lg["quantity"] * lg["production_cost"]).sum()
-WIN_BACK, PER_SHOPPER, LOST = 212_000, 430, 920        # A F12: half of ~920 lost young shoppers ≈ 460 people
+WIN_BACK, PER_SHOPPER, LOST = 195_000, 429, 912        # decision #23 upper end: 912 lost × $429 × 50% ≈ $195K
 rows = {}
 for d in [0.10, 0.15, 0.20]:
     cost = lg_rev * d
@@ -221,12 +222,12 @@ labels = ["10% off\nleggings", "15% off\nleggings", "20% off\nleggings", "Win ba
 vals = list(price_match["yearly cost ($)"]) + [WIN_BACK]
 bars = a2.bar(labels, [v / 1e3 for v in vals], color=[ORANGE, ORANGE, ORANGE, BLUE], width=0.6)
 for b, v, (name, r) in zip(bars, vals, list(price_match.iterrows()) + [(None, None)]):
-    txt = f"${v/1e3:,.0f}K" + (f"\nbreak-even:\n{r['young shoppers needed to break even']:,.0f} shoppers" if r is not None else "\nvalue\n(~460 shoppers)")
+    txt = f"${v/1e3:,.0f}K" + (f"\nbreak-even:\n{r['young shoppers needed to break even']:,.0f} shoppers" if r is not None else "\nvalue at most\n(~456 shoppers)")
     a2.annotate(txt, (b.get_x() + b.get_width() / 2, v / 1e3), xytext=(0, 5), textcoords="offset points",
                 ha="center", color=INK, fontsize=10.5, fontweight="bold")
 a2.set_ylim(0, max(vals) / 1e3 * 1.5)
 a2.set_ylabel("Cost or value per year ($K)")
-a2.set_title("A leggings discount for everyone costs about\nas much as winning young shoppers back is worth",
+a2.set_title("A leggings discount for everyone costs about as much\nas winning young shoppers back is worth: test a targeted offer",
              loc="left", color=INK, fontsize=13, fontweight="bold")
 a2.grid(axis="x", visible=False)
 fig.tight_layout()

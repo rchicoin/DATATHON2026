@@ -214,7 +214,7 @@ ax.grid(axis="x", color=RULE)
 # Apr-Sep 2025; matched on age x pre-launch spend x Apr-Sep 2025 visit frequency (-15.8 pts).
 rows = [("All customers", 69.4, 69.4, NEUTRAL, "69"),
         ("Similar customers\n(same age, spending\n& visits)", 15.8, 15.8, NEUTRAL, "16"),
-        ("Effect of repairs alone\n(prediction model)", 5.3, 8.6, GREEN, "5 to 9")]
+        ("Model-adjusted\nassociation\n(prediction model)", 5.3, 8.6, GREEN, "5 to 9")]
 for i, (lab, lo, hi, col, txt) in enumerate(rows):
     y = len(rows) - 1 - i
     ax.barh(y, lo, 0.56, color=col)
@@ -255,8 +255,10 @@ print(f"Bringing points back to 5% of sales saves ${points_cut:,.0f}")
 # Win-back: 912 lost 18-24 buyers x $429 profit per young buyer today x 50% = $195K; lost revenue x today's
 # margin x 50% = $166K; lost 18-24 ARR x margin x 50% = $154K (decision #23). Points: $0 if members cut
 # spending in step, +$62K if they don't (decision #24).
-opts = [("Close free repairs\n(leadership's plan)", -67, 57, NEUTRAL,
-         "−$67K to +$57K: about break-even,\nwith more room to lose than to gain"),
+# Repairs: 90% bootstrap range of the net effect across both churn models (d3 section 5 / summary section 6):
+# logistic 5th pct -$123K, boosted-trees 95th pct +$83K. Central estimates: -$67K (logistic), +$55K (trees).
+opts = [("Close free repairs\n(leadership's plan)", -123, 83, NEUTRAL,
+         "−$123K to +$83K: about break-even,\nwith more room to lose than to gain"),
         ("Bring points back to\n5% of sales", 0, points_cut / 1e3, GREEN,
          f"$0 to +${points_cut / 1e3:.0f}K, depending on\nhow members respond"),
         ("Win back half of the\nlost 18–24 shoppers", 155, 195, GREEN,
@@ -271,12 +273,12 @@ for i, (lab, lo, hi, col, txt) in enumerate(opts):
 ax.axvline(0, color=INK, lw=1.5)
 ax.text(2, 2.45, "No change", color=INK2, fontsize=12)
 ax.set_yticks(range(len(opts)), [o[0] for o in opts][::-1], fontsize=15, color=INK)
-ax.set_xlim(-100, 400)
+ax.set_xlim(-150, 400)
 ax.set_ylim(-0.5, 2.6)
 ax.xaxis.set_major_formatter(lambda x, _: f"{'+' if x > 0 else ''}{'-' if x < 0 else ''}${abs(x):.0f}K")
 ax.set_xlabel("Change in yearly profit")
 header(fig, "What each option would do to yearly profit",
-       "Right of the line = more profit. Each bar is a range because none of these can be pinned down exactly.")
+       "Right of the line = more profit. Repairs: 90% range across two prediction models. Others: low to high estimate.")
 save(fig, "s8_financial.png")
 
 # ---------------------------------------------------------------- 10. method diagram (slide 4)
@@ -299,7 +301,7 @@ for x0, title, _ in cols:
     ax.text(x0 + 12, 55, title, ha="left", va="center", fontsize=26, fontweight="bold", color=INK)
 
 # 1. Combine: three source boxes -> one table -> shopping trips
-src = [("Sales", "351K items sold"), ("Products", "what each item is"), ("Customers", "14.4K people")]
+src = [("Sales", "351K transaction lines"), ("Products", "what each item is"), ("Customers", "14.4K people")]
 for i, (a, b) in enumerate(src):
     y = 41 - i * 7.5
     ax.add_patch(FancyBboxPatch((6, y - 2.8), 20, 5.6, boxstyle="round,pad=0,rounding_size=0.8", fc=PAPER, ec=NEUTRAL, lw=1))
@@ -314,7 +316,7 @@ ax.text(6, 17, "Then grouped into 190K shopping trips,\nso we can follow each cu
 # 2. Clean
 clean = ["Removed 1,016 sales that were\nrecorded twice",
          "Counted each repair's cost when\nthe item is dropped off",
-         "Linked every return and repair\npickup to the original purchase",
+         "Linked returns to purchases\nand pickups to drop-offs",
          "Added up loyalty points per trip\n(they were split across items)"]
 for i, line in enumerate(clean):
     y = 45 - i * 10.5

@@ -396,16 +396,19 @@ plt.show()
 # Leadership says repairs "only cost money". We test that by asking whether repair users stay longer, and whether
 # what they bring in outweighs what repairs cost. Full analysis: `analysis/c_repairs/` (C-1, C-2).
 #
-# - **Repair users churn less, even against similar customers:** the naive matched gap is 51 points (15% vs 66%),
-#   but it is inflated by timing (11% of users started too late to count as churned). A fair-timing comparison
-#   (repaired by Sep 2025; matched on age, spend and Apr–Sep 2025 visits) gives about 16 points (decision #25).
+# - **Repair users stop shopping less often than similar customers: about 16 points.** A simple matched comparison
+#   (age × spend) shows a much bigger gap, but it is biased by timing: users who started repairing late cannot yet count
+#   as churned, and many non-users had already left before repairs existed. The fair-timing **landmark** comparison
+#   (customers buying Apr–Sep 2025; users = repaired by Sep 2025; matched on age, pre-launch spend and Apr–Sep 2025
+#   visits) gives about **16 points** (decision #25). We use that, not the biased gap.
+# - **After controlling for engagement, the model-adjusted association is 5–9 points.** A churn prediction model
+#   (logistic regression and boosted trees, computed below) switches repair use off for each repair user, holding
+#   visits, spend, recency, tier and demographics fixed. This is observational evidence, not a proven causal effect.
 # - **Slow repairs go with churn:** 24% churn when a user's typical turnaround is over 20 days, vs 11–13% otherwise.
-# - **Repairs cost $134K a year, but repair users hold 77% of ARR.** Scrapping them pays off only if repairs cause
-#   **less than 9%** of the churn gap (an effect under ~4.6 pts). The churn model (section 8 / D-4) puts the effect at
-#   5–9 pts after controlling for engagement: **around break-even**. Best estimate (D-4, scoring each repair user's own
-#   ARR): closing repairs saves $134K but puts $77K–$201K of profit at risk, a net effect between **saving ~$57K and
-#   losing ~$67K a year**. Applying the average effect to all users (below) gives a net loss of $15K–$115K. Either way
-#   the stakes are under 1% of revenue: scrapping repairs is not the saving leadership expects.
+# - **Closing repairs is about break-even on profit.** It saves $134K a year of repair cost but puts profit at risk.
+#   Scoring each current repair user's own ARR, the two models' central estimates of the net effect are **−$67K and
+#   +$55K a year**; their 90% bootstrap ranges together span about **−$123K to +$83K**. The stakes are under 1% of
+#   revenue, with more room to lose than to gain: scrapping repairs is not the saving leadership expects.
 # - **No sign of outerwear cannibalization.** Outerwear did fall 12% after launch, but repair users' outerwear spend
 #   *rose* 10%. The whole drop came from customers who never used repairs.
 
@@ -413,8 +416,9 @@ plt.show()
 # **Who we compare.** Only customers who visited in the year before repairs launched (Apr 2024 – Mar 2025), so everyone
 # could have used repairs. Users are compared with non-users in the same age band × pre-launch spend quartile, weighted
 # by the number of users per cell. Raw churn (13% vs 77%) mostly compares engaged with lapsed customers: 56% of non-users
-# in this cohort stopped visiting *before* repairs existed. So our headline gap also requires a purchase after launch.
-# Counting purchase visits only (a pickup trip is a visit) changes the gap by less than 1 point.
+# in this cohort stopped visiting *before* repairs existed. Requiring a purchase after launch helps, but the gap is still
+# inflated by timing, so the table below is the **biased first pass**; the landmark comparison that follows is the one
+# we use. Counting purchase visits only (a pickup trip is a visit) changes the gap by less than 1 point.
 
 # %%
 c_pre = visits[visits["date"].between(C.REPAIRS_LAUNCH - pd.DateOffset(years=1),
@@ -429,10 +433,10 @@ c_post = visits[(visits["date"] >= C.REPAIRS_LAUNCH) & visits["has_purchase"]]
 c_coh["post_purchases"] = c_post.groupby("customer_id").size().reindex(c_coh.index).fillna(0)
 
 
-def c_matched(d, col="churned"):
-    """Churn of users vs non-users within age band × spend quartile, weighted by users per cell."""
-    g = (d.groupby(["age_band", "spend_q", "used_repair"], observed=True)[col]
-          .agg(["mean", "size"]).unstack("used_repair").dropna())
+def c_matched(d, col="churned", keys=("age_band", "spend_q"), user="used_repair"):
+    """Churn of users vs non-users within matching cells (default age band × spend quartile), weighted by users per cell."""
+    g = (d.groupby([*keys, user], observed=True)[col]
+          .agg(["mean", "size"]).unstack(user).dropna())
     w = g[("size", True)]
     return {"Repair users": (g[("mean", True)] * w).sum() / w.sum(),
             "Non-users": (g[("mean", False)] * w).sum() / w.sum()}
@@ -446,7 +450,9 @@ c_churn = pd.DataFrame({
     "Matched, still buying after launch": c_matched(c_still),
 }).T[["Repair users", "Non-users"]]
 c_churn["Gap (pts)"] = c_churn["Repair users"] - c_churn["Non-users"]
-C_GAP = -c_churn.loc["Matched, still buying after launch", "Gap (pts)"]   # used in the scenarios below
+c_late = c_coh.loc[c_coh["used_repair"], "first_repair_date"] > C.AS_OF_DATE - pd.Timedelta(days=C.CHURN_DAYS)
+print(f"Timing bias: {c_late.mean():.0%} of cohort repair users first repaired after "
+      f"{C.AS_OF_DATE - pd.Timedelta(days=C.CHURN_DAYS):%d %b %Y}, so they cannot count as churned yet.")
 (c_churn * 100).round(1)
 
 # %%
@@ -462,10 +468,37 @@ ax.set_xticks(list(c_x), ["Raw", "Matched on age + pre-launch spend", "Matched, 
 ax.set_ylim(0, 100)
 ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
 ax.legend(loc="upper right", frameon=False)
-ax.set_title("Repair users churn far less, even against similar customers", loc="left", color=INK, fontsize=13)
+ax.set_title("First pass (inflated by timing): repair users churn far less than similar customers",
+             loc="left", color=INK, fontsize=13)
 ax.set_ylabel("Churned (no visit in 180 days)")
 fig.tight_layout()
 plt.show()
+
+# %% [markdown]
+# **Landmark comparison (the gap we use).** Fix a landmark date, **30 Sep 2025**, so everyone has had the same chance
+# to use repairs and the same time to churn afterwards. Sample: cohort customers who made a purchase between the
+# repairs launch and the landmark. Users = first repair by the landmark. Churn = no purchase in the 180 days before the
+# end of the data. Matched within age band × pre-launch spend quartile × quartile of Apr–Sep 2025 purchase visits,
+# weighted by users per cell (decision #25, `docs/review/review_checks.py` section 5).
+
+# %%
+C_LANDMARK = pd.Timestamp("2025-09-30")
+c_win = visits[(visits["date"] >= C.REPAIRS_LAUNCH) & (visits["date"] <= C_LANDMARK) & visits["has_purchase"]]
+c_lm = c_coh.loc[c_coh.index.intersection(c_win["customer_id"].unique())].copy()
+c_lm["early_user"] = c_lm["first_repair_date"] <= C_LANDMARK
+c_lm["spend_q"] = pd.qcut(c_lm["pre_spend"].rank(method="first"), 4, labels=False)
+c_lm["visit_q"] = pd.qcut(c_win.groupby("customer_id").size().reindex(c_lm.index).rank(method="first"), 4, labels=False)
+
+c_land = pd.DataFrame({
+    "Raw": c_lm.groupby("early_user")["churned_purchase"].mean().rename({True: "Repair users", False: "Non-users"}),
+    "Matched: age × spend": c_matched(c_lm, "churned_purchase", user="early_user"),
+    "Matched: age × spend × visits": c_matched(c_lm, "churned_purchase", ("age_band", "spend_q", "visit_q"), "early_user"),
+}).T[["Repair users", "Non-users"]]
+c_land["Gap (pts)"] = c_land["Repair users"] - c_land["Non-users"]
+C_GAP = -c_land.loc["Matched: age × spend × visits", "Gap (pts)"]   # the landmark gap, used in the what-ifs below
+print(f"Landmark sample: {len(c_lm):,} customers, {c_lm['early_user'].sum():,} repaired by {C_LANDMARK:%d %b %Y}. "
+      f"Matched gap: {C_GAP * 100:.1f} pts")
+(c_land * 100).round(1)
 
 # %% [markdown]
 # **Turnaround.** Each repair user's median days from drop-off to pickup (median 13 days overall, range 5–47).
@@ -483,28 +516,149 @@ c_turn["churn_pct"] *= 100
 c_turn.round(1)
 
 # %% [markdown]
-# **Cost saved vs profit at risk (scenarios).** Cost saved = repair cost in the last 12 months (Nov 2025 – Oct 2026).
-# ARR at risk = repair users' ARR × the 51-point churn gap. Profit at risk = ARR at risk × repair users' margin before
-# repair cost (repair cost is already in "cost saved"). We can't prove how much of the gap repairs *cause*, so we
-# assume 25% / 50% / 100% and solve for the break-even share. Our **best estimate** of the true effect comes from
-# Stream D's churn model (`analysis/d_customers_arr/d3_churn_model.ipynb`): switching repair use off for repair users,
-# with visits, spend, recency, tenure, membership and demographics held fixed, raises predicted churn by 5.1 pts
-# (boosted trees) to 8.6 pts (logistic), i.e. 10–17% of the matched gap. Cannibalization is tested separately below.
+# **Churn prediction model: how much of the gap is left once engagement is controlled?** (D-4, full notebook:
+# `analysis/d_customers_arr/d3_churn_model.ipynb`.) Snapshot at **T = 30 Apr 2026**: every feature uses data up to T
+# only, and the label is **no visit in the next 180 days**. Population: customers with a visit in the 12 months
+# before T. Features: visits, purchase visits, spend, points redeemed and returns in the last 12 months, days since
+# last purchase, tenure, membership, Silver/Gold tier, repair use, interests, age band, channel, home area.
+# Two models: logistic regression and gradient-boosted trees (trained on 75%, AUC on the other 25%).
+#
+# **Model-adjusted association:** for each repair user, predict churn as they are and again with repair use switched
+# off, everything else unchanged. The average difference is the repair association after controls. It is
+# observational: the model holds fixed what we can measure, not unmeasured engagement, so it is not a proven effect.
 
 # %%
-c_since = C.AS_OF_DATE - pd.DateOffset(months=C.ARR_WINDOW_MONTHS)
-c_cost = lines.loc[lines["date"] > c_since, "repair_cost_amt"].sum()
+import numpy as np
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+M_T, M_HORIZON, M_SEED = pd.Timestamp("2026-04-30"), 180, 42
+M_NUM = ["visits_12m", "purchase_visits_12m", "revenue_12m", "redeemed_12m", "returns_12m",
+         "days_since_last_purchase", "tenure_years"]
+M_BIN = ["used_repair", "member", "silver_or_gold",
+         "interest_run", "interest_yoga", "interest_pilates", "interest_outdoor", "interest_lifestyle"]
+M_CAT = ["age_band", "acquisition_channel", "home_area"]
+
+
+def m_features(at):
+    """One row per customer with a visit in the 12 months up to `at`; every feature uses data up to `at` only."""
+    past = visits[visits["date"] <= at]
+    l12 = past[past["date"] > at - pd.Timedelta(days=365)]
+    f = customers.set_index("customer_id").loc[l12["customer_id"].unique()].copy()
+    g = l12.groupby("customer_id")
+    f["visits_12m"] = g.size()
+    f["purchase_visits_12m"] = g["has_purchase"].sum()
+    f["revenue_12m"] = g["revenue"].sum()
+    f["redeemed_12m"] = g["redeemed_dollars"].sum()
+    f["returns_12m"] = g["has_return"].sum()
+    f["days_since_last_purchase"] = (at - past[past["has_purchase"]].groupby("customer_id")["date"].max()).dt.days
+    f["days_since_last_purchase"] = f["days_since_last_purchase"].fillna(730)
+    f["tenure_years"] = (at - f["signup_date"]).dt.days / 365
+    f["member"] = (f["loyalty_join_date"] <= at).fillna(False).astype(int)
+    last_tier = past.sort_values("datetime").groupby("customer_id")["tier"].last()
+    f["silver_or_gold"] = last_tier.reindex(f.index).isin(["Silver", "Gold"]).astype(int)
+    drops = past[past["has_dropoff"]].groupby("customer_id").size()
+    f["used_repair"] = (drops.reindex(f.index).fillna(0) > 0).astype(int)
+    return f
+
+
+m_pop = m_features(M_T)
+m_future = visits[(visits["date"] > M_T) & (visits["date"] <= M_T + pd.Timedelta(days=M_HORIZON))]
+m_pop["churn"] = (~m_pop.index.isin(m_future["customer_id"])).astype(int)
+m_X, m_y = m_pop[M_NUM + M_BIN + M_CAT], m_pop["churn"]
+
+
+def m_model(kind):
+    if kind == "Logistic regression":
+        prep = ColumnTransformer([("num", StandardScaler(), M_NUM), ("bin", "passthrough", M_BIN),
+                                  ("cat", OneHotEncoder(handle_unknown="ignore", drop="first"), M_CAT)])
+        return Pipeline([("prep", prep), ("model", LogisticRegression(max_iter=2000))])
+    prep = ColumnTransformer([("num", "passthrough", M_NUM + M_BIN),
+                              ("cat", OneHotEncoder(handle_unknown="ignore"), M_CAT)], sparse_threshold=0)
+    return Pipeline([("prep", prep), ("model", HistGradientBoostingClassifier(
+        max_iter=300, learning_rate=0.05, random_state=M_SEED))])
+
+
+M_KINDS = ["Logistic regression", "Gradient-boosted trees"]
+X_tr, X_te, y_tr, y_te = train_test_split(m_X, m_y, test_size=0.25, stratify=m_y, random_state=M_SEED)
+m_effect = {}
+for kind in M_KINDS:
+    auc = roc_auc_score(y_te, m_model(kind).fit(X_tr, y_tr).predict_proba(X_te)[:, 1])
+    full = m_model(kind).fit(m_X, m_y)
+    users = m_X[m_X["used_repair"] == 1]
+    lift = full.predict_proba(users.assign(used_repair=0))[:, 1] - full.predict_proba(users)[:, 1]
+    m_effect[kind] = {"test AUC": auc, "model-adjusted association (pts)": lift.mean() * 100}
+m_effect = pd.DataFrame(m_effect).T
+print(f"{len(m_pop):,} customers at T · churn {m_y.mean():.1%} · repair users {m_pop['used_repair'].mean():.1%} · "
+      f"raw gap {(m_pop.groupby('used_repair')['churn'].mean().diff().iloc[-1]) * -100:.1f} pts")
+m_effect.round(3)
+
+# %% [markdown]
+# **Forecast: profit at risk if repairs closed today.** Score every **current** repair user (features at 31 Oct 2026)
+# with the T-snapshot models, as they are and with repair use switched off. ARR at risk = Σ (rise in churn
+# probability × that customer's current ARR); next year's new repair users are added at last year's rate (half a
+# year on average). Profit at risk = ARR at risk × the store's margin before repair cost (last 12 months). The range
+# comes from refitting both models on 40 bootstrap resamples each. Takes about two minutes.
+
+# %%
+m_cur = m_features(C.DATA_END)
+m_users_now = m_cur[m_cur["used_repair"] == 1]
+m_Xu = m_users_now[M_NUM + M_BIN + M_CAT]
+m_last_year = visits[visits["date"] > C.DATA_END - pd.Timedelta(days=365)]
+m_margin = (m_last_year["profit"].sum() + m_last_year["repair_cost"].sum()) / m_last_year["revenue"].sum()
+c_cost = m_last_year["repair_cost"].sum()        # repair cost saved by closing, last 12 months
+m_new_users = int((customers["first_repair_date"] > C.DATA_END - pd.Timedelta(days=365)).sum())
+
+rng = np.random.default_rng(M_SEED)
+m_boot = []
+for kind in M_KINDS:
+    for _ in range(40):
+        idx = rng.integers(0, len(m_X), len(m_X))
+        mdl = m_model(kind).fit(m_X.iloc[idx], m_y.iloc[idx])
+        lift = mdl.predict_proba(m_Xu.assign(used_repair=0))[:, 1] - mdl.predict_proba(m_Xu)[:, 1]
+        arr_now = float((lift * m_users_now["arr_12m"]).sum())
+        arr_all = arr_now + arr_now / len(m_users_now) * m_new_users * 0.5
+        m_boot.append({"model": kind, "profit_at_risk": arr_all * m_margin})
+m_boot = pd.DataFrame(m_boot)
+m_boot["net_of_closing"] = c_cost - m_boot["profit_at_risk"]
+
+c_forecast = m_boot.groupby("model").agg(
+    profit_at_risk_central=("profit_at_risk", "median"),
+    net_central=("net_of_closing", "median"),
+    net_low_5pct=("net_of_closing", lambda s: s.quantile(0.05)),
+    net_high_95pct=("net_of_closing", lambda s: s.quantile(0.95)),
+    runs_where_closing_loses_money_pct=("net_of_closing", lambda s: (s < 0).mean() * 100),
+).reindex(M_KINDS)
+C_NET_LOW, C_NET_HIGH = c_forecast["net_low_5pct"].min(), c_forecast["net_high_95pct"].max()
+print(f"Repair cost saved by closing: ${c_cost:,.0f} · {len(m_users_now):,} current repair users · "
+      f"{m_new_users:,} new users a year · margin before repair cost {m_margin:.1%}")
+print(f"Net effect of closing, central estimates: " + " and ".join(
+    f"{k}: ${v / 1e3:+,.0f}K" for k, v in c_forecast["net_central"].items()))
+print(f"90% bootstrap range across both models: ${C_NET_LOW / 1e3:+,.0f}K to ${C_NET_HIGH / 1e3:+,.0f}K a year")
+c_show = c_forecast.copy()
+c_show.iloc[:, :4] /= 1e3
+c_show.columns = ["profit at risk, central ($K)", "net of closing, central ($K)", "net, 5th pct ($K)",
+                  "net, 95th pct ($K)", "bootstrap runs where closing loses money (%)"]
+c_show.round(0)
+
+# %% [markdown]
+# **What-ifs (cross-check).** The same sum with a single average effect: repair users' ARR × effect × their margin
+# before repair cost. The break-even effect is the one at which profit lost equals the repair cost saved. The model's
+# 5–9 pts sit just above break-even; the what-ifs show how much depends on what share of the 16-point landmark gap
+# repairs actually cause.
+
+# %%
 c_users = c_cust[c_cust["used_repair"]]
+c_since = C.AS_OF_DATE - pd.DateOffset(months=C.ARR_WINDOW_MONTHS)
 c_uv = visits[(visits["date"] > c_since) & visits["customer_id"].isin(c_users.index)]
 c_margin = (c_uv["profit"] + c_uv["repair_cost"]).sum() / c_uv["revenue"].sum()
 c_users_arr = c_users["arr_12m"].sum()
-C_BREAK_EVEN = c_cost / (c_users_arr * C_GAP * c_margin)
-
-# Cross-check only: churn model's average effect (d3_churn_model, Stream D) applied to every repair user's ARR.
-C_MODEL_EFFECT = {"Cross-check: avg effect × all users' ARR (boosted trees)": 0.0515,
-                  "Cross-check: avg effect × all users' ARR (logistic)": 0.0862}
-# Headline (decision #20): D's per-customer forecast of profit at risk if repairs close, d3_churn_model section 5.
-C_FORECAST_PROFIT_AT_RISK = {"boosted trees": 77e3, "logistic": 201e3}
+C_BREAK_EVEN_PTS = c_cost / (c_users_arr * c_margin)
 
 
 def c_scenario(effect):
@@ -515,31 +669,34 @@ def c_scenario(effect):
             "Net from scrapping ($K)": (c_cost - c_users_arr * effect * c_margin) / 1e3}
 
 
-c_scen = pd.DataFrame({**{k: c_scenario(v) for k, v in C_MODEL_EFFECT.items()},
-                       **{f"What-if: {s:.0%} of the gap caused by repairs": c_scenario(C_GAP * s)
+c_scen = pd.DataFrame({**{f"Model-adjusted association ({k}, {v:.1f} pts)": c_scenario(v / 100)
+                          for k, v in m_effect["model-adjusted association (pts)"].items()},
+                       **{f"What-if: {s:.0%} of the landmark gap caused by repairs": c_scenario(C_GAP * s)
                           for s in [0.25, 0.5, 1.0]}}).T
-
-print(f"Repair cost, last 12 months: ${c_cost:,.0f} · repair users' ARR: ${c_users_arr/1e6:.2f}M "
-      f"({c_users_arr / c_cust['arr_12m'].sum():.0%} of company ARR) · margin before repair cost: {c_margin:.0%}")
-print(f"Scrapping repairs pays off only if less than {C_BREAK_EVEN:.0%} of the churn gap is caused by repairs "
-      f"(an effect under {C_BREAK_EVEN * C_GAP:.1%} pts). Churn model: "
-      f"{min(C_MODEL_EFFECT.values()):.1%}–{max(C_MODEL_EFFECT.values()):.1%} pts.")
+print(f"Repair users' ARR: ${c_users_arr/1e6:.2f}M ({c_users_arr / c_cust['arr_12m'].sum():.0%} of company ARR) · "
+      f"margin before repair cost {c_margin:.0%} · break-even effect {C_BREAK_EVEN_PTS:.1%} pts "
+      f"({C_BREAK_EVEN_PTS / C_GAP:.0%} of the {C_GAP:.1%}-pt landmark gap)")
 c_scen.round(0)
 
 # %%
-c_labels = ["Cost saved\nby scrapping", "Profit at risk:\nforecast low", "Profit at risk:\nforecast high",
-            "What-if: 25%\nis causal", "What-if: 50%\nis causal"]
-c_vals = ([c_cost / 1e3] + sorted(v / 1e3 for v in C_FORECAST_PROFIT_AT_RISK.values())
-          + [c_scenario(C_GAP * s)["Profit lost ($K)"] for s in (0.25, 0.5)])
 fig, ax = plt.subplots(figsize=(11, 4.6))
-ax.bar(c_labels, c_vals, 0.55, color=[BLUE, ORANGE, ORANGE, "#f4b49a", "#f4b49a"])
-for x, v in enumerate(c_vals):
-    ax.text(x, v + 10, f"${v:,.0f}K", ha="center", color=INK, fontsize=10)
-ax.axhline(c_cost / 1e3, color=BLUE, lw=1.2, ls=(0, (3, 3)))
-ax.yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f"${x:,.0f}K"))
-ax.set_title("Closing repairs is roughly break-even on profit (lighter bars are what-ifs, not estimates)",
-             loc="left", color=INK, fontsize=13)
-ax.set_ylabel("Profit per year")
+c_rows = [(k, c_forecast.loc[k]) for k in M_KINDS]
+for y, (k, r) in enumerate(c_rows):
+    ax.plot([r["net_low_5pct"] / 1e3, r["net_high_95pct"] / 1e3], [y, y], color=ORANGE if r["net_central"] < 0 else BLUE,
+            lw=10, solid_capstyle="butt", alpha=0.45)
+    ax.plot(r["net_central"] / 1e3, y, "o", color=INK, ms=9)
+    ax.annotate(f"central ${r['net_central'] / 1e3:+,.0f}K  (90% range ${r['net_low_5pct'] / 1e3:+,.0f}K to "
+                f"${r['net_high_95pct'] / 1e3:+,.0f}K)", (r["net_high_95pct"] / 1e3, y), xytext=(10, 0),
+                textcoords="offset points", va="center", color=INK, fontsize=10)
+ax.axvline(0, color=INK2, lw=1.2)
+ax.set_yticks(range(len(c_rows)), [k for k, _ in c_rows])
+ax.set_ylim(-0.7, 1.7)
+ax.set_xlim(-160, 260)
+ax.grid(axis="y", visible=False)
+ax.xaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f"${x:+,.0f}K"))
+ax.set_xlabel("Net change in yearly profit from closing repairs (right of 0 = closing saves money)")
+ax.set_title(f"Closing repairs is about break-even: ${C_NET_LOW / 1e3:+,.0f}K to ${C_NET_HIGH / 1e3:+,.0f}K a year "
+             "across both models", loc="left", color=INK, fontsize=13)
 fig.tight_layout()
 plt.show()
 
@@ -615,7 +772,99 @@ fig.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 7. Pilates campaign (Stream D, slide 9)
+# ## 7. Does spending stay higher after joining loyalty or a first repair? (event study, Stream D)
+# Full notebook: `analysis/d_customers_arr/d6_attribution.ipynb`. **Linear regression on customer-months**
+# (Pilates recruits excluded): each customer's monthly repeat spend is explained by dummies for the months before and
+# after joining loyalty and before and after the first repair, plus a dummy for **every calendar month** (absorbs the
+# competitor, seasons, holiday sales, website and new manager) and **every customer** (each customer is compared with
+# themselves). Standard errors clustered by customer. The "before" windows show whether spending was already moving.
+#
+# **Website check:** if the website (Nov 2025, shows tier and points) changed anything, it should lift long-standing
+# members more than non-members. We add "member since before Nov 2024 × after Nov 2025", with the same term a year
+# earlier as a placebo (no event in Nov 2024).
+
+# %%
+def ols_cluster(y, X, groups):
+    """OLS with cluster-robust standard errors (same small-sample correction as statsmodels' cluster option)."""
+    Xv, yv = X.to_numpy(float), y.to_numpy(float)
+    xtx_inv = np.linalg.inv(Xv.T @ Xv)
+    beta = xtx_inv @ Xv.T @ yv
+    scores = pd.DataFrame(Xv * (yv - Xv @ beta)[:, None]).groupby(pd.factorize(groups)[0]).sum().to_numpy()
+    n, k, g = len(yv), Xv.shape[1], scores.shape[0]
+    cov = xtx_inv @ (scores.T @ scores) @ xtx_inv * g / (g - 1) * (n - 1) / (n - k)
+    se = np.sqrt(np.diag(cov))
+    from scipy.stats import norm
+    return pd.DataFrame({"coef": beta, "low": beta - 1.96 * se, "high": beta + 1.96 * se,
+                         "p": 2 * norm.sf(np.abs(beta / se))}, index=X.columns)
+
+
+e_cm = customer_month.copy()
+e_pil = set(customers.loc[customers["acquisition_channel"] == "Pilates Campaign", "customer_id"])
+e_ev = customers.set_index("customer_id")[["loyalty_join_date", "first_repair_date"]].apply(
+    lambda s: s.dt.to_period("M").dt.to_timestamp())
+e_cm = e_cm.join(e_ev, on="customer_id")
+e_cm = e_cm[~e_cm["customer_id"].isin(e_pil)].reset_index(drop=True)
+e_mo = e_cm["month"]
+
+E_BINS = [(-6, -4, "6–4 before"), (-3, -1, "3–1 before"), (0, 0, "event month"), (1, 3, "1–3 after"),
+          (4, 6, "4–6 after"), (7, 12, "7–12 after"), (13, 99, "13+ after")]
+e_X = pd.DataFrame(index=e_cm.index)
+for name, col in [("Loyalty", "loyalty_join_date"), ("Repairs", "first_repair_date")]:
+    k = (e_mo.dt.year - e_cm[col].dt.year) * 12 + (e_mo.dt.month - e_cm[col].dt.month)
+    for lo, hi, lab in E_BINS:
+        e_X[f"{name}|{lab}"] = ((k >= lo) & (k <= hi)).astype(float)
+E_TERMS = list(e_X.columns)
+E_WEB, E_PLACEBO = C.WEBSITE_LAUNCH.to_period("M").to_timestamp(), pd.Timestamp("2024-11-01")
+e_long = (e_cm["loyalty_join_date"] < E_PLACEBO).astype(float)
+e_X["long member × after Nov 2025 (website)"] = e_long * (e_mo >= E_WEB)
+e_X["long member × after Nov 2024 (placebo)"] = e_long * (e_mo >= E_PLACEBO)
+E_WEB_TERMS = list(e_X.columns[-2:])
+e_X = pd.concat([e_X, pd.get_dummies(e_mo, prefix="m", drop_first=True, dtype=float)], axis=1)
+e_g = e_cm["customer_id"]
+e_y = e_cm["repeat_revenue"].astype(float)
+# Customer fixed effects: subtract each customer's own average, then OLS with standard errors clustered by customer.
+e_fit = ols_cluster(e_y - e_y.groupby(e_g).transform("mean"), e_X - e_X.groupby(e_g).transform("mean"), e_g)
+e_fit.columns = ["extra $ per month", "95% low", "95% high", "p-value"]
+
+event = e_fit.loc[E_TERMS, ["extra $ per month", "95% low", "95% high"]].copy()
+event.index = pd.MultiIndex.from_tuples([t.split("|") for t in E_TERMS], names=["program", "window"])
+print(f"{len(e_cm):,} customer-months, {e_g.nunique():,} customers")
+display(e_fit.loc[E_WEB_TERMS].round(2))
+event.round(1)
+
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(12, 4.8), sharey=True)
+e_labs = [b[2] for b in E_BINS]
+e_xs = np.arange(len(e_labs))
+for ax, (prog, colr, ttl) in zip(axes, [("Loyalty", ORANGE, "Joining loyalty: a bump that fades within a year"),
+                                        ("Repairs", BLUE, "First repair: spending stays higher for over a year")]):
+    d = event.loc[prog].reindex(e_labs)
+    ax.axhline(0, color=INK2, lw=1)
+    ax.axvspan(1.5, 2.5, color=GRID, zorder=0)
+    ax.errorbar(e_xs, d["extra $ per month"], yerr=[d["extra $ per month"] - d["95% low"],
+                                                    d["95% high"] - d["extra $ per month"]],
+                color=colr, marker="o", ms=7, lw=2, capsize=4, mec="#fcfcfb", mew=1.5)
+    for x, v in zip(e_xs, d["extra $ per month"]):
+        ax.annotate(f"{v:+.0f}", (x, v), xytext=(9, 0), textcoords="offset points", va="center", fontsize=9, color=INK)
+    ax.set_xticks(e_xs, [l.replace(" ", "\n", 1) for l in e_labs], fontsize=9)
+    ax.set_title(ttl, loc="left", color=INK, fontsize=12)
+    ax.grid(axis="x", visible=False)
+axes[0].set_ylabel("Extra repeat spend per month vs own normal ($)")
+fig.suptitle("Spending before and after each event, same calendar months held fixed (whiskers: 95% range)",
+             x=0.01, ha="left", color=INK, fontsize=13)
+fig.tight_layout()
+plt.show()
+
+# %% [markdown]
+# **Reading it:** joining loyalty comes with a spending bump that fades within a year, so loyalty mostly brings
+# spending forward rather than lifting it for good. After a first repair, spending stays above the customer's own
+# normal for more than a year. Repair users were already spending more before their first repair (self-selection), so
+# the *shape* is the robust finding and the dollar sizes are not causal. The website term is no larger than its placebo:
+# no sign the website raised members' spending, and the new manager's effect can't be separated from other store-wide
+# changes.
+
+# %% [markdown]
+# ## 8. Pilates campaign (Stream D, slide 5)
 # Customers who signed up during the campaign (Jan 6 – Mar 31, 2025): the 360 from the Pilates campaign vs the 417
 # from other channels in the **same weeks**, so season and store conditions match. The data has no campaign cost,
 # so this measures value delivered, not ROI.
@@ -666,13 +915,88 @@ fig.tight_layout()
 plt.show()
 
 # %% [markdown]
-# ## 8. Recommendation, KPIs & risks (Stream D, slide 10)
+# ## 9. Checking the evidence behind the price and points proposals (Stream D, slide 9)
+# Full notebook: `analysis/d_customers_arr/d7_recommendation_checks.ipynb`.
+#
+# **(a) Would a leggings discount win back 18–24s?** In the year before the competitor (Mar 2023 – Feb 2024): the
+# share of each age group's spending made at sale prices (Black Friday, Boxing Week), and the share spent on leggings.
+# Then the yearly cost of a storewide leggings discount (last 12 months of leggings sales × discount), against the
+# most that winning back half the lost young shoppers is worth: 912 lost 18–24 buyers × $429 profit each × 50% ≈
+# **$195K a year before the cost of the offer** (low end $155K; decision #23, from `analysis/a_competitor/`).
+
+# %%
+r_buys = lines[lines["row_type"] == C.PURCHASE].copy()
+r_buys["on_sale"] = r_buys["unit_price_paid"] < r_buys["price"] - 0.005
+r_pre = r_buys[(r_buys["date"] >= "2023-03-01") & (r_buys["date"] < "2024-03-01")]
+r_sens = pd.DataFrame({
+    "% of spend at sale prices": r_pre[r_pre["on_sale"]].groupby("age_band")["revenue"].sum()
+                                 / r_pre.groupby("age_band")["revenue"].sum() * 100,
+    "% of spend on leggings": r_pre[r_pre["category"] == "Leggings"].groupby("age_band")["revenue"].sum()
+                              / r_pre.groupby("age_band")["revenue"].sum() * 100,
+}).loc[A_AGES].round(1)
+display(r_sens)
+
+r_lg = r_buys[(r_buys["category"] == "Leggings") & (r_buys["date"] > C.DATA_END - pd.Timedelta(days=365))]
+r_lg_rev = r_lg["revenue"].sum()
+r_lg_cost = (r_lg["quantity"] * r_lg["production_cost"]).sum()
+R_WIN_BACK_LOW, R_WIN_BACK_HIGH, R_PER_SHOPPER = 155_000, 195_000, 429     # decision #23
+r_price = pd.DataFrame({f"{d:.0%} off all leggings": {
+    "yearly cost ($K)": r_lg_rev * d / 1e3,
+    "leggings margin after (%)": (r_lg_rev * (1 - d) - r_lg_cost) / (r_lg_rev * (1 - d)) * 100,
+    "young shoppers won back to break even": r_lg_rev * d / R_PER_SHOPPER,
+    "cost vs max win-back value ($195K)": "below" if r_lg_rev * d < R_WIN_BACK_HIGH else "above",
+} for d in [0.10, 0.15, 0.20]}).T
+print(f"Leggings, last 12 months: ${r_lg_rev:,.0f} of sales, margin {(r_lg_rev - r_lg_cost) / r_lg_rev:.0%}. "
+      f"18–24 share of leggings sales: {r_lg.loc[r_lg['age_band'] == '18-24', 'revenue'].sum() / r_lg_rev:.0%}")
+r_price
+
+# %% [markdown]
+# Young shoppers bought on sale no more than other ages, and they are a small share of today's leggings sales, so most
+# of a storewide discount would go to customers who already buy at full price. A 10% discount costs most of the
+# win-back value and 15% already costs more than its upper end. **So the recommendation is a targeted test, not a
+# storewide price match:** an 18–24 leggings/basics offer in selected weeks or for a test group of customers, scaled
+# up only if the extra profit from returning young shoppers beats the cost of the offer.
+#
+# **(b) A 50% cap on paying with points.** Last 12 months, purchases only: how many purchases were paid more than half
+# with points, how many points sit above that cap, and how often those purchases are returned. A cap doesn't destroy
+# points (customers keep them for later), so it **delays** redemption rather than lowering total loyalty cost. Its
+# job is to cut points-funded returns.
+
+# %%
+r_pt = (lines[lines["row_type"] == C.PURCHASE].groupby("transaction_id")["revenue"].sum().to_frame("revenue")
+        .join(visits.set_index("transaction_id")[["redeemed_dollars", "date"]]))
+r_pt = r_pt[(r_pt["revenue"] > 0) & (r_pt["date"] > C.DATA_END - pd.Timedelta(days=365))]
+r_pt["share"] = (r_pt["redeemed_dollars"] / r_pt["revenue"]).clip(upper=1)
+r_pt["returned"] = r_pt.index.isin(set(lines.loc[lines["row_type"] == "Return", "original_transaction_id"].dropna()))
+r_over = r_pt["share"] > 0.5
+pd.Series({
+    "purchases in the last 12 months": len(r_pt),
+    "purchases paid more than half with points": int(r_over.sum()),
+    "share of purchases over the cap (%)": r_over.mean() * 100,
+    "points redeemed, total ($)": r_pt["redeemed_dollars"].sum(),
+    "points above the cap ($)": (r_pt.loc[r_over, "redeemed_dollars"] - 0.5 * r_pt.loc[r_over, "revenue"]).sum(),
+    "return rate, over the cap (%)": r_pt.loc[r_over, "returned"].mean() * 100,
+    "return rate, other points purchases (%)": r_pt.loc[~r_over & (r_pt["share"] > 0), "returned"].mean() * 100,
+}).round(1)
+
+# %% [markdown]
+# **What this supports:** refunding redeemed points *as points* on returns is strongly supported (today a return refunds the
+# full price but the redeemed points are never given back, about $70K of points-paid value since launch; the store's
+# refund policy is unconfirmed). The 50% cap is worth **testing** to reduce
+# points-funded returns, but it won't lower the structural cost of points. To lower that cost, test the **earn rate**
+# (each 0.25 pts per $ ≈ $81K a year) or the **Gold-tier threshold** (Gold is 69% of member spend).
+
+# %% [markdown]
+# ## 10. Recommendation, KPIs & risks (Stream D, slides 9-10)
 # **Answer:** not as planned. Revenue recovered from fewer, older customers spending more (sections 3–4), so the
-# gap is keeping customers, not rewarding the ones who stay. **Keep free repairs:** repair users churn far less than
-# similar customers, closing them is roughly break-even on profit (between +$57K and −$67K a year, section 6), and they
-# don't cannibalize outerwear. **Don't expand loyalty as it stands:** members spend more, but mostly because the best
-# customers join; membership doesn't keep customers, points now cost a steady ~6% of revenue (set by tier mix: Gold is 69% of member spend), and heavy-points
-# purchases are returned 2.4× as often (section 5).
+# gap is keeping customers, not rewarding the ones who stay. **Keep free repairs:** repair users stop shopping about
+# 16 points less often than similar customers (5–9 points after model controls), closing them is about break-even on
+# profit (central estimates −$67K and +$55K a year; 90% range about −$123K to +$83K, section 6), their spending stays
+# higher for over a year (section 7), and they don't cannibalize outerwear. **Don't expand loyalty as it stands:**
+# members spend more, but mostly because the best customers join; no separate retention effect is detected, the
+# joining bump fades within a year, points cost a steady ~6% of revenue (set by tier mix: Gold is 69% of member
+# spend), and heavy-points purchases are returned 2.4× as often (section 5). **Win back young shoppers with a targeted
+# test, not a storewide price match** (section 9).
 
 # %%
 since_launch = visits[visits["date"] >= C.LOYALTY_LAUNCH]
@@ -686,9 +1010,9 @@ pd.Series({
 # | Area | Recommendation | KPI to track (target) | Risk to watch |
 # |---|---|---|---|
 # | Repairs | Keep free repairs, with a 20-day turnaround target | Churn gap vs similar non-repairers, matched on age, spend and visit frequency (now about 16 pts; break-even 4.6); turnaround ≤ 20 days (over 20 days: 24% churn vs 11–13%) | Some of the gap is self-selection; the churn model puts the true effect near break-even (5–9 pts) |
-# | Loyalty | Redesign before expanding: reward visits and retention, not just spend; cap the share of a purchase payable in points | Profit per member after redemptions vs matched non-members; redemptions ≤ 5% of revenue (now 5.9%); tier retention | Points cost is structural (~7% of member revenue; each +0.25 pts/$ ≈ +$81K/yr); no separate retention effect detected after controls |
+# | Loyalty | Redesign before expanding: reward visits, not just spend; refund redeemed points as points on returns; test a 50% points cap to cut points-funded returns; to lower cost, test the earn rate or Gold threshold | Profit per member after redemptions vs matched non-members; redemptions ≤ 5% of revenue (now 5.9%); return rate of points-paid purchases | Points cost is structural (each +0.25 pts/$ ≈ +$81K/yr); a cap only delays redemption; no separate retention effect detected after controls |
 # | Acquisition | Judge campaigns on retention, not sign-ups | 6- and 12-month return rate of new customers (Pilates: 52% vs 81%) | Campaign customers churn after the offer ends |
-# | Customer base | Win back 18–24s on the staples the competitor undercut, led by leggings | New 18–24 customers per month; active repeat customers vs pre-competitor (now 94) | A price war erodes margin; growth depends on fewer, older customers |
+# | Customer base | Test a targeted 18–24 leggings/basics offer in selected weeks or customer groups; scale only if incremental profit is positive | New 18–24 customers per quarter; extra profit vs offer cost in the test group | A storewide 10% leggings discount costs ~$134K/yr and 15% (~$201K) exceeds the $195K max win-back value |
 #
 # **Limitations:** members and repair users choose to take part, so matched comparisons reduce but don't remove
 # selection bias; ARR lags real changes by up to 12 months; the data has no campaign or program running costs
