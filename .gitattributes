@@ -1,0 +1,3 @@
+# keep raw data byte-identical across Windows/Mac
+data/raw/* -text
+*.pdf binary

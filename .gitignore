@@ -1,0 +1,21 @@
+# generated data — rebuild with: python -m src.tables
+data/processed/*
+!data/processed/.gitkeep
+
+# personal scratch work stays local
+scratch/*
+!scratch/.gitkeep
+
+# python / jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

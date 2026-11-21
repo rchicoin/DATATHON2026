@@ -1,0 +1,39 @@
+item_id,item_name,category,activity,season,price,production_cost
+L01,Flow High-Rise Legging,Leggings,Yoga,All-Season,98,36
+L02,Pace Tight 25in,Leggings,Run,All-Season,118,44
+L03,Studio Crop Legging,Leggings,Pilates,All-Season,88,33
+L04,Everyday Jogger,Leggings,Lifestyle,All-Season,108,41
+L05,Trail Hike Pant,Leggings,Outdoor,All-Season,128,50
+B01,Flow Bra,Sports Bras,Yoga,All-Season,58,20
+B02,Stride Bra,Sports Bras,Run,All-Season,68,24
+B03,Core Bra,Sports Bras,Pilates,All-Season,54,19
+T01,Breeze Long Sleeve,Tops,Run,All-Season,78,28
+T02,Soft Tee,Tops,Lifestyle,All-Season,58,19
+T03,Wrap Top,Tops,Pilates,All-Season,68,25
+T04,Thermal Half-Zip,Tops,Run,Winter,108,42
+K01,Flow Tank,Tank Tops,Yoga,Summer,48,16
+K02,Stride Singlet,Tank Tops,Run,Summer,52,18
+K03,Ribbed Pilates Tank,Tank Tops,Pilates,Summer,54,19
+S01,Pace Short 4in,Shorts,Run,Summer,64,23
+S02,Flow Short,Shorts,Yoga,Summer,58,21
+S03,Hike Short,Shorts,Outdoor,Summer,74,28
+S04,Bike Short,Shorts,Pilates,Summer,62,22
+O01,Shell Rain Jacket,Outerwear,Outdoor,Winter,248,98
+O02,Down Puffer,Outerwear,Outdoor,Winter,298,120
+O03,Run Wind Jacket,Outerwear,Run,All-Season,168,64
+O04,Insulated Vest,Outerwear,Lifestyle,Winter,178,70
+H01,Cloud Hoodie,Hoodies & Sweaters,Lifestyle,Winter,128,47
+H02,Crew Sweatshirt,Hoodies & Sweaters,Lifestyle,Winter,98,35
+H03,Fleece Zip-Up,Hoodies & Sweaters,Outdoor,Winter,148,56
+A01,Grip Socks,Accessories,Pilates,All-Season,22,6
+A02,Run Socks 3-Pack,Accessories,Run,All-Season,34,10
+A03,Yoga Mat 5mm,Accessories,Yoga,All-Season,98,34
+A04,Water Bottle,Accessories,Lifestyle,All-Season,38,11
+A05,Belt Bag,Accessories,Lifestyle,All-Season,48,15
+A06,Toque,Accessories,Lifestyle,Winter,38,11
+A07,Run Cap,Accessories,Run,Summer,38,11
+A08,Gym Duffel,Accessories,Lifestyle,All-Season,128,46
+A09,Resistance Band Set,Accessories,Pilates,All-Season,42,12
+A10,Pilates Ring,Accessories,Pilates,All-Season,48,15
+R01,Repair - Outerwear,Repairs,Service,All-Season,0,45
+R02,Repair - Activewear,Repairs,Service,All-Season,0,18
