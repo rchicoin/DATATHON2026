@@ -4,6 +4,23 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 
 <!-- Add a finding as soon as you have it. Copy this block for each one. Newest at the top. -->
 
+## F7. Loyalty buys a 6-month spending bump that fades; repairs go with spending that stays higher for over a year; no sign the website lifted members
+- **Method:** linear regression (event study) on 457,780 customer-months (14,080 customers, Pilates recruits excluded). Monthly repeat spend is explained by dummies for months before/after joining loyalty and before/after the first repair, plus a dummy for every calendar month (absorbs the competitor, season, holiday sales, website, new manager) and every customer (compares each customer with themselves). Standard errors clustered by customer.
+- **Loyalty, extra $ per month vs own normal:** 6–4 months before +12 · 3–1 before −20 · joining month +102 · **1–3 after +36 · 4–6 after +42 · 7–12 after +5 · 13+ after −14**. A short bump, gone within a year and slightly below where members started.
+- **Repairs:** 6–4 before +46 · 3–1 before +31 · first-repair month +197 · **1–3 after +93 · 4–6 after +88 · 7–12 after +69 · 13+ after +59**. Users were already spending more beforehand (self-selection), but spending rose further and stayed up.
+- **Website (Nov 2025) vs new manager:** long-standing members (joined before Nov 2024) spent **$19 a month less** after Nov 2025 (95% range −$23 to −$15), while the same test a year earlier (placebo, Nov 2024) gave +$8. **No evidence the website raised members' spending.** The new manager can't be separated from other store-wide changes.
+- **Why there's no dollar-by-dollar waterfall:** a single "after joining" effect × exposure credited loyalty and repairs with more than the whole $1.15M recovery and gave the website −$2M (its placebo was also negative). An average can't describe an effect that rises then fades, so it isn't reported.
+- **Evidence:** `analysis/d_customers_arr/d6_attribution.ipynb`, steps 2–3. **Chart:** `results/d_customers_arr/d6_event_study.png`
+- **Confidence / caveats:** medium. Customer and month dummies remove fixed differences and store-wide events, but joining coincides with a purchase (people dip, then join during a big buy), and repair users were already rising. The *shape* is robust; exact dollar sizes are not causal.
+- **So what for the recommendation:** expanding perks buys temporary spending, not lasting loyalty, which supports "redesign before expanding". Repairs go with a lasting lift, consistent with keeping them.
+
+## F6. The recovery is fewer customers shopping more often (decomposition)
+- **Claim:** Repeat revenue, year before the competitor (Mar 2023 – Feb 2024) vs the last 12 months (Nov 2025 – Oct 2026): **+6%** in total = **active repeat customers −20% + purchase visits per customer +28% + spend per visit −3%** (log %, the parts add up exactly). Every age band 25+ grew through **more frequent visits** (+26% to +37%) while spending a bit less per visit (−5% to −11%). **18–24s lost half their repeat customers** (−73 log % ≈ −52%), which visit frequency (+14%) couldn't offset: −$549K.
+- **Evidence:** `analysis/d_customers_arr/d6_attribution.ipynb`, step 1. 12-month windows, so seasonality and holiday sales cancel. Purchase visits only (repair-only trips bring in $0 and didn't exist before Apr 2025).
+- **Chart:** `results/d_customers_arr/d6_decomposition.png`
+- **Confidence / caveats:** high (it's arithmetic). It says *how* revenue recovered, not *why*; F7 addresses why.
+- **So what for the recommendation:** growth depends on a shrinking base visiting more often. Winning back customers (especially 18–24s) matters more than perks that raise spend per visit.
+
 ## F5. Churn model (scikit-learn): repairs still cut churn after controlling for everything, but by 5–9 points, not 51
 - **Method:** snapshot at 30 Apr 2026. Features use only data up to then: visits, purchase visits, spend, points redeemed, returns, days since last purchase, tenure, membership, tier, repair use, age band, channel, area and interests. Label: no visit in the next 180 days. 6,129 customers active in the prior year (42% churned). Logistic regression and gradient-boosted trees, trained on 75% and tested on 25%.
 - **Accuracy:** test AUC **0.84** (both models), so the model ranks who will churn well. Removing repair use barely changes AUC (0.842), because visits and recency already carry most of the signal.
