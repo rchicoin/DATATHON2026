@@ -4,11 +4,12 @@ Owner: Person D · Branch: `main` · Last updated: 2026-11-21
 
 <!-- Add a finding as soon as you have it. Copy this block for each one. Newest at the top. -->
 
-## F4. DRAFT recommendation: shift from rewarding spend to keeping customers
+## F4. DRAFT recommendation: keep repairs, fix loyalty's profit before expanding it
 - **Claim:** Leadership's plan (expand loyalty, scrap repairs) rests on "loyalty drove the recovery". The evidence so far says revenue came back from **fewer, older customers spending more** (D-1 F2, A F4/F9), and campaigns didn't keep new customers (D-2 F3). Loyalty lifts member revenue, but only **~30–34%** of the extra reaches profit (B early: 25–34 +$232 revenue / +$69 profit; 35–44 +$382 / +$131), vs the store's **57%** margin since launch. Redeemed points cost **$797K (5.0% of revenue)** since launch.
-- **Draft answer:** don't expand loyalty as it stands; redesign it to reward visits and retention. Don't scrap repairs until C-2 shows the cost saved beats the ARR at risk. Judge campaigns on 12-month retention. Win back 18–24s on undercut staples (leggings).
+- **Repairs (C, confirmed):** repair users churn 15% vs 66% for matched non-users still buying (C F1). Scrapping saves $134K a year but risks $366K–$1.47M of profit; it only pays off if repairs cause under 9% of the gap (C F3). Over-20-day turnaround goes with 24% churn vs 11–13% (C F2).
+- **Draft answer:** keep free repairs with a 20-day turnaround target. Don't expand loyalty as it stands; redesign it to reward visits and retention. Judge campaigns on 12-month retention. Win back 18–24s on undercut staples (leggings).
 - **Evidence:** `summary.py` section 8; B's `results/b_loyalty/loyalty_analysis.ipynb` (early, not yet in B's findings).
-- **Confidence / caveats:** medium. B's numbers are early and not yet matched on pre-launch spend; the member definition still needs checking. The repairs half depends entirely on C-1/C-2.
+- **Confidence / caveats:** medium. B's numbers are early and not yet matched on pre-launch spend; the member definition still needs checking. The repairs half rests on C's 25/50/100% scenarios: it holds unless repairs cause under 9% of the churn gap.
 - **So what for the recommendation:** this is the recommendation. Confirm at the 2:00 check-in.
 - **Handed to D?** yes (own stream)
 

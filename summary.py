@@ -91,7 +91,7 @@ arr = arr[arr.index >= "2023-11-01"]
 trough_m = arr.idxmin()
 
 pd.Series({
-    "ARR at competitor open, Mar 2024 ($M)": arr[C.COMPETITOR_OPEN] / 1e6,
+    "ARR at competitor open, Mar 2024 ($M)": arr[C.COMPETITOR_OPEN.to_period("M").to_timestamp()] / 1e6,
     f"ARR low, {trough_m:%b %Y} ($M)": arr.min() / 1e6,
     "ARR Oct 2026 ($M)": arr.iloc[-1] / 1e6,
     "Change from low to Oct 2026 (%)": (arr.iloc[-1] / arr.min() - 1) * 100,
@@ -501,11 +501,12 @@ plt.show()
 
 # %% [markdown]
 # ## 8. Recommendation, KPIs & risks (Stream D, slide 10)
-# *DRAFT before the 2:00 check-in. Repairs and loyalty rows to confirm with C-2 and B-1.*
+# *DRAFT: repairs row confirmed by C-1/C-2 (section 6); loyalty row to confirm with B-1.*
 #
 # **Answer:** not as planned. Revenue recovered from fewer, older customers spending more (section 3, A), so the
-# gap is keeping customers, not rewarding the ones who stay. Fix loyalty's profit before expanding it, and don't
-# scrap repairs until C-2 shows the cost saved beats the ARR at risk.
+# gap is keeping customers, not rewarding the ones who stay. **Keep free repairs:** repair users churn 15% vs 66%
+# for similar non-users, and scrapping saves $134K a year but risks $366K–$1.47M of profit (section 6). **Fix
+# loyalty's profit before expanding it.**
 
 # %%
 since_launch = visits[visits["date"] >= C.LOYALTY_LAUNCH]
@@ -518,7 +519,7 @@ pd.Series({
 # %% [markdown]
 # | Area | Recommendation | KPI to track (target) | Risk to watch |
 # |---|---|---|---|
-# | Repairs | Keep for now; scrap only if C-2 shows cost saved beats ARR at risk | Churn of repair users vs similar non-users; turnaround ≤ [__] days | Repair cost grows faster than the ARR it keeps |
+# | Repairs | Keep free repairs, with a 20-day turnaround target | Churn of repair users vs similar non-users (now 15% vs 66%); turnaround ≤ 20 days (over 20 days: 24% churn vs 11–13%) | Some of the gap is self-selection; the case holds unless repairs cause under 9% of it |
 # | Loyalty | Redesign before expanding: reward visits and retention, not just spend | Profit per member after redemptions; redemptions ≤ [__]% of revenue (now 5.0%) | Extra member revenue reaches profit at about half the normal rate |
 # | Acquisition | Judge campaigns on retention, not sign-ups | 6- and 12-month return rate of new customers (Pilates: 52% vs 81%) | Campaign customers churn after the offer ends |
 # | Customer base | Win back 18–24s on the staples the competitor undercut, led by leggings | New 18–24 customers per month; active repeat customers vs pre-competitor (now 94) | A price war erodes margin; growth depends on fewer, older customers |
