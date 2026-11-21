@@ -1,15 +1,11 @@
 # Stream B — Loyalty program
 
-> **DRAFT scope.** `who_answers_what.md` was missing at setup, so this was inferred from the case's guiding questions.
-> Replace the *Questions* section with this person's section from `docs/who_answers_what.md`.
-
-## Questions
-- Who uses the loyalty program (by demographic and tier)? (Behaviour)
-- Does purchase behaviour change when a customer is close to the next tier? (GQ 3)
-- How did loyalty affect top-line revenue vs bottom-line profit, net of redeemed points? (GQ 4)
-- Are items paid for mostly with points returned more often? (GQ 5)
-- What happens to demoted Silver members? Do they keep shopping? (GQ 6)
-- Which KPIs show whether loyalty is genuinely working? (GQ 10)
+## Questions (4-hour scope; full method in `docs/who_answers_what.md`, Person B)
+- **B-1 Must (60 min):** revenue vs profit change per customer, members vs non-members, matched on age band, 12 months before vs after launch. Redemption cost % of member revenue (Q4).
+- **B-2 Must (30 min):** return rate by points-share bucket (Q5).
+- **B-3 Should (45 min):** average basket by distance to the next tier (Q3).
+- **Cut:** Q6 demoted Silver members (list tier retention as a KPI instead).
+- Slides: 5, 6.
 
 ## Tables you use
 - `visits`: `tier`, `points_earned`, `points_redeemed`, `redeemed_dollars`, `points_balance_after` (never sum it), `profit`.
@@ -28,4 +24,5 @@ Profit, Redeemed points ($ = pts/20), tiers (Silver 600 / Gold 2000 over trailin
 ## Rules
 - Load data with `from src.metrics import load`. Take dates and thresholds from `src.config`. Never re-clean.
 - Notebooks live here. Write findings to `results/b_loyalty/findings.md` as soon as you have them.
-- Need a new column or a change to a definition? Open a PR to `src/` (one reviewer) and log it in `docs/decisions_log.md`.
+- `src/` is frozen for the 4-hour sprint: compute new columns in your own notebook. Only fix a real bug, and tell the team chat first.
+- Only touch `analysis/<this stream>/`, `results/<this stream>/` and your section of `summary.py`; commit to `main` with `git pull --rebase && git push`.

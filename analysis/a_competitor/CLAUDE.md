@@ -1,12 +1,11 @@
 # Stream A — Competitor impact & seasonality
 
-> **DRAFT scope.** `who_answers_what.md` was missing at setup, so this was inferred from the case's guiding questions.
-> Replace the *Questions* section with this person's section from `docs/who_answers_what.md`.
-
-## Questions
-- How did sales change after the competitor opened? Were some demographics (age band, home area, channel) or product categories hit harder? (GQ 1)
-- Are there noticeable seasonal patterns, including the Black Friday and Boxing Week discounts? (GQ 2)
-- Confirm or replace the **competitor open date** (`COMPETITOR_OPEN`, currently an estimate). This is decision #6.
+## Questions (4-hour scope; full method in `docs/who_answers_what.md`, Person A)
+- **A-1 Must (45 min):** YoY revenue % by age band, competitor date marked. Hardest-hit categories and areas (Q1). Confirms `COMPETITOR_OPEN`.
+- **A-2 Must (30 min):** heatmap of category x calendar month; Black Friday / Boxing Week (Q2).
+- **Should:** sign-ups and visits per customer by age band, before vs after.
+- **Cut:** formal change-point test.
+- Slide: 4.
 
 ## Tables you use
 - `lines`: category, activity, season, revenue by date. Customer demographics are already joined.
@@ -25,4 +24,5 @@ Revenue, Visit, Key dates (competitor, loyalty launch), Repeat visit.
 ## Rules
 - Load data with `from src.metrics import load`. Take dates and thresholds from `src.config`. Never re-clean.
 - Notebooks live here. Write findings to `results/a_competitor/findings.md` as soon as you have them.
-- Need a new column or a change to a definition? Open a PR to `src/` (one reviewer) and log it in `docs/decisions_log.md`.
+- `src/` is frozen for the 4-hour sprint: compute new columns in your own notebook. Only fix a real bug, and tell the team chat first.
+- Only touch `analysis/<this stream>/`, `results/<this stream>/` and your section of `summary.py`; commit to `main` with `git pull --rebase && git push`.

@@ -14,4 +14,6 @@ Cleaning rules (implemented in `src/clean.py` + `src/tables.py`):
 - Sum `points_redeemed` per transaction. Never sum `points_balance_after`.
 - Profit = Revenue − Production − Repair − Redeemed points/20.
 
-Findings go in `results/<stream>/findings.md`. Changes to `src/` need a reviewed PR and an entry in `docs/decisions_log.md`.
+**4-hour sprint mode:** read `SPRINT_CONTEXT.md` first (timeline, scope, traps; details in `docs/work_plan.md`): scope per person is in `docs/who_answers_what.md` (must / should / cut). Stay inside it.
+`src/` is frozen: compute new columns in the stream's notebook. Only touch `analysis/<stream>/`, `results/<stream>/` and that stream's section of `summary.py`.
+Findings go in `results/<stream>/findings.md`. Charts are saved as PNGs in `results/<stream>/`.

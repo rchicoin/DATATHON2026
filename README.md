@@ -57,8 +57,10 @@ Aylin's first pass at cleaning and joining, which writes CSVs to `analysis/clean
 
 ## Team rules
 
-1. **One branch per stream** (`a_competitor`, `b_loyalty`, `c_repairs`, `d_customers_arr`). Merge to `main` through a PR.
-2. **Changes to `src/` need one reviewer.** Any change to a definition or flag also gets an entry in `docs/decisions_log.md`.
+We are working in a **4-hour sprint**. Timeline and slides are in `docs/work_plan.md`, and each person's scope is in `docs/who_answers_what.md`.
+
+1. **Work only in your own folders** (`analysis/<stream>/`, `results/<stream>/`, your section of `summary.py`) and commit straight to `main` with `git pull --rebase && git push`. Push at least at 2:00 and 3:00.
+2. **`src/` is frozen.** Only fix a real bug, and tell the team chat first. Open decisions are closed with defaults (`docs/decisions_log.md`).
 3. **Run `nbstripout --install` after cloning**, so notebook outputs never get committed.
 4. **Findings go in `results/<stream>/findings.md` as soon as they exist.** Don't hold them until the end.
 5. Load data only through `src/`. Never re-clean in a notebook, and never hard-code a date or threshold.

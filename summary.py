@@ -29,24 +29,29 @@ lines, visits, customers = load("lines"), load("visits"), load("customers")
 customer_month, links = load("customer_month"), load("links")
 
 # %% [markdown]
-# ## 3. Competitor impact & seasonality (Stream A)
+# ## 3. ARR over time (Stream D, slide 3)
 
 # %%
 
 # %% [markdown]
-# ## 4. Loyalty program (Stream B)
+# ## 4. Competitor impact & seasonality (Stream A, slide 4)
 
 # %%
 
 # %% [markdown]
-# ## 5. Free repair program (Stream C)
+# ## 5. Loyalty program: revenue vs profit, points-funded returns (Stream B, slides 5-6)
 
 # %%
 
 # %% [markdown]
-# ## 6. Customers & ARR (Stream D)
+# ## 6. Repairs: churn and cost vs ARR at risk, with scenarios (Stream C, slides 7-8)
 
 # %%
 
 # %% [markdown]
-# ## 7. Recommendation, risks & KPIs
+# ## 7. Pilates campaign (Stream D, slide 9)
+
+# %%
+
+# %% [markdown]
+# ## 8. Recommendation, KPIs & risks (Stream D, slide 10)

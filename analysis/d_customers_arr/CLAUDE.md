@@ -1,13 +1,10 @@
 # Stream D — Customers, ARR & synthesis
 
-> **DRAFT scope.** `who_answers_what.md` was missing at setup, so this was inferred from the case's guiding questions.
-> Replace the *Questions* section with this person's section from `docs/who_answers_what.md`.
-
-## Questions
-- Build the company ARR series and attribute changes to the initiatives (competitor, loyalty, Pilates, repairs, website, new manager).
-- Did the Pilates campaign attract engaged long-term customers or single-visit shoppers? (GQ 7)
-- Churn and retention by segment.
-- **Bring A, B and C together** into the strategy recommendation: scrap repairs and expand loyalty? Then own `summary.py` → `summary.ipynb` and the slide storyline.
+## Questions (4-hour scope; full method in `docs/who_answers_what.md`, Person D)
+- **D-0 Must (0:00, 15 min):** 10-slide skeleton from `docs/work_plan.md`.
+- **D-1 Must (30 min):** company ARR line from Nov 2023, split by member and repair user, events marked.
+- **D-2 Must (45 min):** Pilates (Jan to Mar 2025 signups) vs other channels: retention at 3/6/12 months (Q7).
+- **D-3 Must (from 2:10):** KPI table (Q10), recommendation, slides 1/2/3/9/10, and running `summary.py` end to end.
 
 ## Tables you use
 - `customer_month`: `arr_12m`, `active`, `churned` per month. `metrics.company_arr()`.
@@ -26,4 +23,5 @@ You receive the handoffs from A, B and C (see their `CLAUDE.md` files). You prod
 ## Rules
 - Load data with `from src.metrics import load`. Take dates and thresholds from `src.config`. Never re-clean.
 - Notebooks live here. Write findings to `results/d_customers_arr/findings.md` as soon as you have them.
-- Need a new column or a change to a definition? Open a PR to `src/` (one reviewer) and log it in `docs/decisions_log.md`.
+- `src/` is frozen for the 4-hour sprint: compute new columns in your own notebook. Only fix a real bug, and tell the team chat first.
+- Only touch `analysis/<this stream>/`, `results/<this stream>/` and your section of `summary.py`; commit to `main` with `git pull --rebase && git push`.

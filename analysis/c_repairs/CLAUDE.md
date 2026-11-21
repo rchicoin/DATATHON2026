@@ -1,14 +1,11 @@
 # Stream C — Free repair program
 
-> **DRAFT scope.** `who_answers_what.md` was missing at setup, so this was inferred from the case's guiding questions.
-> Replace the *Questions* section with this person's section from `docs/who_answers_what.md`.
-
-## Questions
-- Who uses the repair program? (Behaviour)
-- What is the true cost of repairs vs the value of the customers who use them? (Money)
-- Do repairs cannibalize jacket and outerwear sales, as management believes?
-- Do repair users churn less? Does turnaround time matter? (GQ 8)
-- If repairs shut down tomorrow, what happens to retention and ARR? (GQ 9)
+## Questions (4-hour scope; full method in `docs/who_answers_what.md`, Person C)
+- **C-1 Must (60 min):** churn of repair users vs matched non-users (customers active Apr 2024 to Mar 2025 only), and churn by turnaround bucket (Q8). The raw gap (13% vs 77%) is likely mostly selection: report the matched gap.
+- **C-2 Must (45 min):** yearly repair cost vs ARR and profit at risk, at 25/50/100% causal share; break-even sentence (Q9). This is our scenario-testing bonus.
+- **Should:** outerwear cannibalization; repair-user profile.
+- **Cut:** turnaround modelling beyond buckets.
+- Slides: 7, 8.
 
 ## Tables you use
 - `lines`: `repair_cost_amt` (drop-offs only; pickups are $0), R01 outerwear / R02 activewear, and Outerwear category sales.
@@ -28,4 +25,5 @@ Repair cost (at drop-off, $45 / $18), Churn (180 days), ARR, repairs launch 2025
 ## Rules
 - Load data with `from src.metrics import load`. Take dates and thresholds from `src.config`. Never re-clean.
 - Notebooks live here. Write findings to `results/c_repairs/findings.md` as soon as you have them.
-- Need a new column or a change to a definition? Open a PR to `src/` (one reviewer) and log it in `docs/decisions_log.md`.
+- `src/` is frozen for the 4-hour sprint: compute new columns in your own notebook. Only fix a real bug, and tell the team chat first.
+- Only touch `analysis/<this stream>/`, `results/<this stream>/` and your section of `summary.py`; commit to `main` with `git pull --rebase && git push`.
