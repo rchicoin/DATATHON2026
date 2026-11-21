@@ -51,6 +51,10 @@ Streams: `a_competitor`, `b_loyalty`, `c_repairs`, `d_customers_arr` (Person D b
 | `customer_month` | customer × month | revenue, `active`, `tier_last_seen`, `arr_12m`, `churned` (as of month end) |
 | `links` | one Return / Pickup line | `original_transaction_id`, `original_date`, `days_between`, `resolved` |
 
+## Cleaning notebook (`analysis/lululime_analysis.ipynb`)
+
+Aylin's first pass at cleaning and joining, which writes CSVs to `analysis/clean/` (gitignored). It follows the same core rules as `src/`. It also adds features that `src/` doesn't have yet: categories for the `notes` text, Black Friday and Boxing Week flags, a repair status (open or abandoned) with turnaround, `pre_window_signup`, and a switch to write off defective returns. These will move into `src/` so every stream gets them. Where her notebook and `src/` disagree, see `docs/decisions_log.md` (#12–15).
+
 ## Team rules
 
 1. **One branch per stream** (`a_competitor`, `b_loyalty`, `c_repairs`, `d_customers_arr`). Merge to `main` through a PR.

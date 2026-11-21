@@ -1,6 +1,8 @@
 # generated data — rebuild with: python -m src.tables
 data/processed/*
 !data/processed/.gitkeep
+# tables written by analysis/lululime_analysis.ipynb
+clean/
 
 # personal scratch work stays local
 scratch/*

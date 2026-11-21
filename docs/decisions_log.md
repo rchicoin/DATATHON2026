@@ -15,3 +15,7 @@ Every choice that changes a number goes here: newest at the bottom, with a date,
 | 9 | 2026-11-21 | A "visit" is any `transaction_id`, including return-only and repair-only visits (this affects churn and visit counts) | Default in `src/tables.py`. Revisit if a stream needs purchase-only visits | **open** | Person D |
 | 10 | 2026-11-21 | 141 returns with no `original_transaction_id` (Nov 2022) are kept, with `resolved=False` | The original purchase predates the data. Their revenue and cost still count | decided | team |
 | 11 | 2026-11-21 | `AS_OF_DATE` = 2026-10-31 (last sales date) for churn and trailing-12-month metrics | Last date in the data | decided | team |
+| 12 | 2026-11-21 | Tier label for blank tier before launch: `Pre-loyalty` (`src/`) vs `Pre-program` (Aylin's notebook) | Pick one so charts and tables match | **open** | team |
+| 13 | 2026-11-21 | Repeat customer: a visit after `signup_date` (agreed) vs 2 or more purchase visits (Aylin's notebook) | The agreed definition wins unless the team changes it. ARR depends on it | **open** | team |
+| 14 | 2026-11-21 | 259 unpicked drop-offs: Aylin found they're all from the last weeks of the data, so they're "open", not abandoned. Abandoned = no pickup after 45 days (the longest turnaround is 47) | Affects how Stream C describes them. Cost still counts | decided | Person C |
+| 15 | 2026-11-21 | Blank `points_balance_after`: 0 (`src/`) vs left blank (Aylin's notebook) | Blank is more honest for non-members. Doesn't affect profit | **open** | team |

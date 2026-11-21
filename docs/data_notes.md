@@ -47,7 +47,8 @@ Total revenue after dedup: **$26,204,614.30**
 ## Links (`links` table)
 - **Returns → Purchase:** all 17,387 returns with an `original_transaction_id` resolve (matched on transaction_id + item_id). **141 returns have no `original_transaction_id`.** All 141 fall between 2022-11-01 and 2022-11-24, so the original purchase predates the data. `resolved=False` marks them, with a reason.
 - **Pickups → Drop-off:** 5,221 / 5,221 resolve.
-- **259 drop-offs were never picked up.** Their repair cost still counts.
+- **259 drop-offs were never picked up.** All of them were dropped off in the last weeks of the data, so they're most likely still open, not abandoned (the longest turnaround seen is 47 days). Their repair cost still counts.
+- 68 drop-offs include 2 items, and a pickup can be split across visits. A repair = one item in one drop-off.
 
 ## Customers / dates
 - Sales start 2022-11-01, but `signup_date` goes back to 2018-03-01. For the 9,611 customers who signed up on or after 2022-11-01, the first visit in the data equals `signup_date` in 100% of cases.
