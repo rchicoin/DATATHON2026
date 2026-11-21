@@ -50,6 +50,10 @@ print(f"Churn gap: {GAP:.1%} (plain matched: {GAP_PLAIN:.1%})")
 # predicted churn of repair users with repair use switched off, everything else held fixed. It controls for
 # visits, spend, recency, tenure, membership and demographics, so it's stricter than C-1's matching.
 MODEL_EFFECT = {"boosted trees": 0.0515, "logistic": 0.0862}
+# Headline (team decision #20): D's per-customer forecast of profit at risk if repairs close (d3_churn_model,
+# section 5): each repair user's own churn change × their own ARR, plus next year's new users. The MODEL_EFFECT rows
+# below apply the average effect to every user's ARR and are a cruder cross-check.
+FORECAST_PROFIT_AT_RISK = {"boosted trees": 77e3, "logistic": 201e3}
 
 # %% [markdown]
 # ## Inputs: last 12 months (Nov 2025 to Oct 2026)
@@ -92,7 +96,7 @@ def scenario(share: float, gap: float = GAP) -> dict:
 
 SHARES = [0.25, 0.50, 1.00]
 scen = pd.DataFrame({
-    **{f"Churn model, {k} ({v:.1%} pts)": scenario(v / GAP) for k, v in MODEL_EFFECT.items()},
+    **{f"Cross-check: churn model avg effect, {k} ({v:.1%} pts)": scenario(v / GAP) for k, v in MODEL_EFFECT.items()},
     **{f"{s:.0%} caused by repairs": scenario(s) for s in SHARES},
 }).T
 scen.to_csv(OUT / "c2_scenarios.csv")
@@ -115,9 +119,9 @@ plt.rcParams.update({"font.size": 11, "axes.edgecolor": MUTED, "axes.labelcolor"
                      "axes.facecolor": SURFACE})
 
 SCENARIO = "#f4b49a"   # lighter orange: what-if scenarios, less likely than the model estimate
-labels = ["Cost saved\nby scrapping", "Best estimate,\nlow", "Best estimate,\nhigh", "If 25%\nis causal", "If 50%\nis causal"]
-vals = [repair_cost] + [scenario(v / GAP)["Profit lost"] for v in sorted(MODEL_EFFECT.values())] \
-       + [scenario(s)["Profit lost"] for s in (0.25, 0.50)]
+labels = ["Cost saved\nby scrapping", "At risk:\nforecast low", "At risk:\nforecast high", "What-if: 25%\nis causal",
+          "What-if: 50%\nis causal"]
+vals = [repair_cost] + sorted(FORECAST_PROFIT_AT_RISK.values()) + [scenario(s)["Profit lost"] for s in (0.25, 0.50)]
 fig, ax = plt.subplots(figsize=(8, 4.6))
 bars = ax.bar(labels, vals, 0.6, color=[COST, LOST, LOST, SCENARIO, SCENARIO])
 for b, v in zip(bars, vals):
@@ -129,7 +133,7 @@ ax.yaxis.grid(True, color="#e4e3df", linewidth=0.8)
 ax.set_axisbelow(True)
 ax.yaxis.set_major_formatter(lambda v, _: f"${v / 1e3:,.0f}K")
 ax.set_ylabel("Profit per year")
-ax.set_title("Repairs pay for themselves, but only just\n(best estimate from the churn model; lighter bars are what-ifs)",
+ax.set_title("Closing repairs is roughly break-even on profit\n(dark: D's per-customer forecast; light: what-ifs, not estimates)",
              loc="left", color=INK, fontsize=12)
 fig.tight_layout()
 fig.savefig(OUT / "c2_cost_vs_profit.png", dpi=200)

@@ -497,8 +497,11 @@ c_margin = (c_uv["profit"] + c_uv["repair_cost"]).sum() / c_uv["revenue"].sum()
 c_users_arr = c_users["arr_12m"].sum()
 C_BREAK_EVEN = c_cost / (c_users_arr * C_GAP * c_margin)
 
-C_MODEL_EFFECT = {"Best estimate, low (churn model, boosted trees)": 0.0515,   # from d3_churn_model (Stream D)
-                  "Best estimate, high (churn model, logistic)": 0.0862}
+# Cross-check only: churn model's average effect (d3_churn_model, Stream D) applied to every repair user's ARR.
+C_MODEL_EFFECT = {"Cross-check: avg effect × all users' ARR (boosted trees)": 0.0515,
+                  "Cross-check: avg effect × all users' ARR (logistic)": 0.0862}
+# Headline (decision #20): D's per-customer forecast of profit at risk if repairs close, d3_churn_model section 5.
+C_FORECAST_PROFIT_AT_RISK = {"boosted trees": 77e3, "logistic": 201e3}
 
 
 def c_scenario(effect):
@@ -521,15 +524,17 @@ print(f"Scrapping repairs pays off only if less than {C_BREAK_EVEN:.0%} of the c
 c_scen.round(0)
 
 # %%
-c_labels = ["Cost saved\nby scrapping", "Best estimate,\nlow", "Best estimate,\nhigh", "If 25%\nis causal", "If 50%\nis causal"]
-c_vals = [c_cost / 1e3] + list(c_scen["Profit lost ($K)"].iloc[:4])
+c_labels = ["Cost saved\nby scrapping", "Profit at risk:\nforecast low", "Profit at risk:\nforecast high",
+            "What-if: 25%\nis causal", "What-if: 50%\nis causal"]
+c_vals = ([c_cost / 1e3] + sorted(v / 1e3 for v in C_FORECAST_PROFIT_AT_RISK.values())
+          + [c_scenario(C_GAP * s)["Profit lost ($K)"] for s in (0.25, 0.5)])
 fig, ax = plt.subplots(figsize=(11, 4.6))
 ax.bar(c_labels, c_vals, 0.55, color=[BLUE, ORANGE, ORANGE, "#f4b49a", "#f4b49a"])
 for x, v in enumerate(c_vals):
     ax.text(x, v + 10, f"${v:,.0f}K", ha="center", color=INK, fontsize=10)
 ax.axhline(c_cost / 1e3, color=BLUE, lw=1.2, ls=(0, (3, 3)))
 ax.yaxis.set_major_formatter(mtick.FuncFormatter(lambda x, _: f"${x:,.0f}K"))
-ax.set_title("Repairs pay for themselves, but only just (lighter bars are what-ifs, not estimates)",
+ax.set_title("Closing repairs is roughly break-even on profit (lighter bars are what-ifs, not estimates)",
              loc="left", color=INK, fontsize=13)
 ax.set_ylabel("Profit per year")
 fig.tight_layout()

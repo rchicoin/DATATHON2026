@@ -60,11 +60,11 @@ function statPanel(slide, items) {
   });
 }
 
-// ---------- Slide 7: churn ----------
+// ---------- Slide 7: churn (deck blueprint slide 7) ----------
 pres.addSection({ title: "Repairs" });
 const s7 = pres.addSlide({ masterName: "CHART_PANEL", sectionTitle: "Repairs" });
-s7.addText("Repair users stay far longer", { placeholder: "title" });
-s7.addText("Share who stopped shopping (no visit in 180 days), customers active in the year before repairs launched",
+s7.addText("Repairs keep the best customers", { placeholder: "title" });
+s7.addText("Repair users are mostly Gold members, and they stop shopping far less than similar customers",
   { placeholder: "body" });
 s7.addChart(pres.charts.BAR, [
   { name: "Repair users", labels: ["Raw", "Matched on age +\npre-launch spend", "Matched, and still\nbuying after launch"],
@@ -77,36 +77,37 @@ s7.addChart(pres.charts.BAR, [
   showValue: true, dataLabelPosition: "outEnd", dataLabelFormatCode: "0%",
   valAxisMinVal: 0, valAxisMaxVal: 1, valAxisMajorUnit: 0.2, valAxisLabelFormatCode: "0%",
   valGridLine: { color: HEX.grid, size: 0.75 },
+  showTitle: true, title: "Churned (no visit in 180 days)", titleFontSize: 12, titleColor: HEX.muted, titleFontFace: "+mn-lt",
   showLegend: true, legendPos: "t", legendFontSize: 12, legendColor: HEX.ink, legendFontFace: "+mn-lt",
   ...AXIS, objectName: "Churn chart",
 });
 statPanel(s7, [
-  { big: "15% vs 66%", color: C.accent1, size: 36,
-    label: "churn: repair users vs similar customers still buying after launch" },
-  { big: "−51 pts", color: C.text1,
-    label: "matched churn gap; a stricter model puts the part caused by repairs at 5–9 pts" },
+  { big: "64% Gold", color: C.accent1, size: 36,
+    label: "of active repair users are Gold members (vs 8% of other customers)" },
+  { big: "5–9 pts", color: C.text1,
+    label: "lower churn caused by repairs, after controls (churn model)" },
   { big: "24%", color: C.accent2,
     label: "churn when repairs take over 20 days, vs 11–13% when faster" },
 ]);
-s7.addText("Matched = same age band and pre-launch spend quartile. 1,702 repair users vs 4,992 non-users. Counting purchase visits only changes the gap by <1 pt.",
+s7.addText("Matched = same age band × pre-launch spend quartile. No cannibalization: repair users' outerwear spend +10% after launch.",
   { placeholder: "source" });
 s7.addNotes(
-`Headline: customers who use free repairs are far less likely to stop shopping with us.
+`Headline: free repairs are used by our best customers, and those customers stay.
 
-- Raw numbers look extreme (15% vs 84%), but that's unfair: loyal customers are the ones who bring clothes in.
-- So we only compared customers who were shopping before repairs existed, with the same age and spending level. Repair users still churn 15% vs 81%.
-- More than half of those non-users had left before repairs even launched, so we also required them to still be buying afterwards. The gap is still 15% vs 66%: 51 points. That's the number we carry forward.
-- Turnaround matters: when repairs take over 20 days, churn doubles to 24%. That's a cheap thing to fix.
-- Caveat: this shows repair users stay, not that repairs alone make them stay. Loyal customers would stay anyway. Reagan's churn model controls for how engaged people already were, and it says repairs themselves account for about 5–9 points of the gap. The next slide uses that.`);
+- Who uses repairs: 64% of active repair users are Gold members, versus 8% of everyone else. Each brings in about 5 times as much yearly revenue.
+- Churn: only 15% of repair users stopped shopping, versus 66% of similar customers (same age, same spending, still shopping after repairs launched).
+- Honest caveat: loyal people are the ones who use repairs, so not all of that gap is caused by repairs. Our churn model controls for how engaged people already were, and it says repairs themselves cut churn by about 5 to 9 points.
+- Speed matters: when repairs take over 20 days, 24% of those customers leave, versus 11–13% when repairs are faster.
+- Leadership's jacket worry doesn't hold up: repair users bought 10% more outerwear after launch. The outerwear drop came from customers who never used repairs.`);
 
-// ---------- Slide 8: cost vs profit at risk ----------
+// ---------- Backup slide: money (feeds deck slide 8 / appendix A4) ----------
 const s8 = pres.addSlide({ masterName: "CHART_PANEL", sectionTitle: "Repairs" });
-s8.addText("Repairs pay for themselves, but only just", { placeholder: "title" });
-s8.addText("Yearly repair cost vs profit lost if repairs are scrapped: best estimate (dark) and what-ifs (light)",
+s8.addText("Closing repairs is roughly break-even", { placeholder: "title" });
+s8.addText("Yearly repair cost vs profit at risk if repairs close: forecast (dark) and what-ifs (light)",
   { placeholder: "body" });
 s8.addChart(pres.charts.BAR, [
-  { name: "Per year ($K)", labels: ["Cost saved by\nscrapping", "Profit lost:\nbest est. low", "Profit lost:\nbest est. high",
-    "What-if: 25%\nis causal", "What-if: 50%\nis causal"], values: [134, 148, 248, 366, 733] },
+  { name: "Per year ($K)", labels: ["Cost saved by\nclosing", "At risk:\nforecast low", "At risk:\nforecast high",
+    "What-if: 25%\nis causal", "What-if: 50%\nis causal"], values: [134, 77, 201, 366, 733] },
 ], {
   x: 0.5, y: 1.85, w: 8.1, h: 4.85, barDir: "col", barGapWidthPct: 55,
   chartColors: [HEX.blue, HEX.orange, HEX.orange, "F4B49A", "F4B49A"],
@@ -116,24 +117,23 @@ s8.addChart(pres.charts.BAR, [
   ...AXIS, objectName: "Cost vs profit chart",
 });
 statPanel(s8, [
-  { big: "$15K–$115K", color: C.accent2, size: 34,
-    label: "best-estimate yearly loss from scrapping repairs" },
+  { big: "+$57K to −$67K", color: C.text1, size: 30,
+    label: "net yearly effect of closing repairs: saves a little or loses a little" },
+  { big: "<1%", color: C.accent1,
+    label: "of revenue at stake either way: not the saving leadership expects" },
   { big: "77%", color: C.text1,
     label: "of company ARR comes from the 2,175 repair users ($5.1M of $6.7M)" },
-  { big: "+10%", color: C.accent1,
-    label: "repair users' outerwear spend after launch: no sign of cannibalization" },
 ]);
-s8.addText("Cost = repair cost Nov 2025 – Oct 2026. Profit lost = repair users' ARR × churn effect × 56% margin. Best estimate: churn model (5.1–8.6 pts); break-even 4.6 pts.",
+s8.addText("At risk = churn-model forecast per repair user (boosted trees / logistic) × their ARR × 57% margin. What-ifs use the 51-pt matched gap.",
   { placeholder: "source" });
 s8.addNotes(
-`Headline: repairs cost about $134K a year, and they protect a bit more profit than that. They pay for themselves, but only just.
+`Headline: closing repairs wouldn't save the money leadership expects. It's roughly break-even.
 
-- Repair users are only 2,175 customers but bring in 77% of our repeat revenue, so even a small drop in their loyalty is expensive.
-- Break-even: scrapping only saves money if repairs explain less than about 9% of the churn gap (under ~4.6 points).
-- Our best estimate, from the churn model, is that repairs account for 5–9 points. That's just above break-even: scrapping would save $134K but lose about $148K–$248K of profit, a net loss of about $15K–$115K a year.
-- The lighter bars are what-ifs. If repairs explain a quarter or half of the gap, the loss is much bigger, but the model says that's unlikely, so we don't lean on them.
-- Leadership's other worry was that repairs stop people buying new jackets. Outerwear did fall 12% store-wide, but repair users bought 10% MORE outerwear; the whole drop came from customers who never used repairs.
-- Recommendation: keep free repairs, but treat them as break-even-plus, not a big win. Faster turnaround (under 20 days) and cheaper repairs are what make them clearly worth it.`);
+- Repairs cost about $134K a year.
+- Our churn model forecasts, customer by customer, how many repair users would leave if repairs closed, and what profit they'd take with them: between $77K and $201K a year.
+- So closing repairs would somewhere between save about $57K and lose about $67K a year. That's under 1% of revenue either way.
+- The lighter bars are what-ifs: if repairs explained a quarter or half of the loyalty gap, the loss would be much bigger. The model says that's unlikely, so we don't lean on them.
+- Bottom line: repairs aren't a money drain. They keep our Gold members, cost about what they earn back, and become clearly profitable if we make them faster and cheaper.`);
 
 (async () => {
   const out = path.join(__dirname, "c_repairs_slides_7-8.pptx");
