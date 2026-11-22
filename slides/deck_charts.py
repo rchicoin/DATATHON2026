@@ -334,3 +334,117 @@ for i, (h, b) in enumerate(check):
 fig.savefig(OUT / "s3_method.png", dpi=200)
 plt.close(fig)
 print("saved s3_method.png")
+
+# ---------------------------------------------------------------- 11. appendix A1/A2 (same numbers as summary.py section 11)
+# Each chart fills one panel on the appendix slides (813 x 439 px, panel colour #F0EFE6); the slide carries the title.
+PANEL = "#F0EFE6"
+vfull = load("visits")
+cust = load("customers").set_index("customer_id")
+
+
+def panel():
+    fig, ax = plt.subplots(figsize=(8.136, 4.392))
+    fig.set_facecolor(PANEL)
+    ax.set_facecolor(PANEL)
+    for t in ax.get_xticklabels() + ax.get_yticklabels():
+        t.set_fontsize(13)
+    return fig, ax
+
+
+def save_panel(fig, name):
+    fig.tight_layout()
+    fig.savefig(OUT / name, dpi=200, facecolor=PANEL)
+    plt.close(fig)
+    print("saved", name)
+
+
+# A1 left: profit per $100 of sales, members vs non-members, 12 months before vs after the loyalty launch
+L = C.LOYALTY_LAUNCH
+pre = vfull[(vfull.date >= L - pd.DateOffset(years=1)) & (vfull.date < L)]
+post = vfull[(vfull.date >= L) & (vfull.date < L + pd.DateOffset(years=1))]
+both = (pre.groupby("customer_id")[["revenue", "profit"]].sum().add_suffix("_pre")
+        .join(post.groupby("customer_id")[["revenue", "profit"]].sum().add_suffix("_post"), how="inner"))
+both["member"] = both.index.map(cust.loyalty_join_date).notna() & (both.index.map(cust.loyalty_join_date) < L + pd.DateOffset(years=1))
+s = both.groupby("member")[["revenue_pre", "profit_pre", "revenue_post", "profit_post"]].sum()
+p100 = pd.DataFrame({"before": s.profit_pre / s.revenue_pre * 100, "after": s.profit_post / s.revenue_post * 100})
+fig, ax = panel()
+x = np.arange(2)
+for j, (col, colr, lab) in enumerate([("before", NEUTRAL, "12 months before launch"), ("after", GREEN, "12 months after launch")]):
+    vals = [p100.loc[True, col], p100.loc[False, col]]
+    ax.bar(x + (j - 0.5) * 0.36, vals, 0.34, color=colr, label=lab)
+    for xi, v_ in zip(x, vals):
+        ax.text(xi + (j - 0.5) * 0.36, v_ + 1, f"${v_:.1f}", ha="center", fontsize=14, fontweight="bold", color=INK)
+ax.set_xticks(x, [f"Members\n(sales ${s.revenue_pre[True]/1e6:.2f}M → ${s.revenue_post[True]/1e6:.2f}M)",
+                  f"Non-members\n(sales ${s.revenue_pre[False]/1e6:.2f}M → ${s.revenue_post[False]/1e6:.2f}M)"], fontsize=13, color=INK)
+ax.set_ylim(0, 80)
+ax.set_ylabel("Profit per $100 of sales", fontsize=13)
+ax.legend(frameon=False, loc="upper right", fontsize=12, ncol=2)
+save_panel(fig, "a1_profit_per_100.png")
+print(f"Members: ${p100.loc[True, 'before']:.1f} -> ${p100.loc[True, 'after']:.1f} per $100")
+
+# A1 right: basket index vs points still needed for the next tier
+tx = (df.assign(gross=df.revenue.where(df.row_type == C.PURCHASE, 0), is_buy=df.row_type == C.PURCHASE)
+      .groupby("transaction_id").agg(customer_id=("customer_id", "first"), datetime=("datetime", "first"),
+                                     join_date=("loyalty_join_date", "first"), points=("points_earned", "sum"),
+                                     basket=("gross", "sum"), has_buy=("is_buy", "any")))
+tx = tx.sort_values(["customer_id", "datetime"]).reset_index()
+tx["trailing"] = (tx.set_index("datetime").groupby("customer_id")["points"]
+                  .rolling(f"{C.TIER_WINDOW_DAYS}D", closed="left").sum().fillna(0).values)
+m = tx[tx.has_buy & tx.join_date.notna() & (tx.datetime >= tx.join_date) & (tx.datetime >= L)
+       & (tx.trailing < C.GOLD_THRESHOLD)].copy()
+m["silver"] = m.trailing < C.SILVER_THRESHOLD
+m["gap"] = np.where(m.silver, C.SILVER_THRESHOLD, C.GOLD_THRESHOLD) - m.trailing
+m["idx"] = m.basket / m.groupby("customer_id").basket.transform("mean") * 100
+GAPS = ["0–50", "50–100", "100–200", "200–400", "400+"]
+m["b"] = pd.cut(m.gap, [0, 50, 100, 200, 400, np.inf], labels=GAPS, right=False)
+t = m.groupby(["silver", "b"], observed=True).idx.mean().unstack(0)
+fig, ax = panel()
+ax.axhline(100, color=INK2, lw=1.2, ls=(0, (3, 3)))
+for silver, colr, lab in [(True, GREEN, "Member → Silver (600 pts)"), (False, BRICK, "Silver → Gold (2,000 pts)")]:
+    ax.plot(range(5), t[silver].reindex(GAPS), marker="o", ms=8, lw=2.5, color=colr, label=lab)
+ax.set_xticks(range(5), GAPS, fontsize=13, color=INK)
+ax.set_xlabel("Points still needed for the next tier", fontsize=13)
+ax.set_ylabel("Basket, % of own usual", fontsize=13)
+ax.set_ylim(85, 115)
+ax.text(-0.15, 92, "Dashed line = the customer's usual basket (100)", fontsize=11, color=INK2, ha="left")
+ax.legend(frameon=False, loc="upper left", fontsize=12)
+save_panel(fig, "a1_basket_vs_tier.png")
+
+# A2 left: sales by category, Mar-Oct 2026 vs 2023, 18-24 vs 25+
+p = df[(df.row_type == C.PURCHASE) & df.date.dt.month.between(3, 10) & df.date.dt.year.isin([2023, 2026])]
+p = p.assign(yr=p.date.dt.year, grp=np.where(p.age_band == "18-24", "Aged 18–24", "Aged 25+"))
+cat = p.groupby(["category", "grp", "yr"]).revenue.sum().unstack("yr")
+cat = ((cat[2026] / cat[2023] - 1) * 100).unstack("grp").sort_values("Aged 18–24", ascending=False)
+fig, ax = panel()
+y = np.arange(len(cat))
+ax.grid(axis="y", visible=False)
+ax.grid(axis="x", color=RULE)
+ax.barh(y + 0.2, cat["Aged 18–24"], 0.38, color=BRICK, label="Aged 18–24")
+ax.barh(y - 0.2, cat["Aged 25+"], 0.38, color=INK, label="Aged 25+")
+for yi, (a_, b_) in enumerate(zip(cat["Aged 18–24"], cat["Aged 25+"])):
+    ax.text(a_ - 1.5, yi + 0.2, f"{a_:.0f}%", va="center", ha="right", fontsize=11, color=BRICK_TXT, fontweight="bold")
+    ax.text(b_ + (1.5 if b_ >= 0 else -1.5), yi - 0.2, f"{b_:+.0f}%", va="center", ha="left" if b_ >= 0 else "right",
+            fontsize=11, color=INK, fontweight="bold")
+ax.axvline(0, color=INK, lw=1.2)
+ax.set_yticks(y, cat.index, fontsize=12, color=INK)
+ax.set_xlim(-80, 60)
+ax.xaxis.set_major_formatter(lambda v, _: f"{v:+.0f}%" if v else "0%")
+ax.set_xlabel("Change in sales, Mar–Oct 2026 vs Mar–Oct 2023", fontsize=13)
+ax.legend(frameon=False, loc="upper right", fontsize=12)
+save_panel(fig, "a2_categories.png")
+
+# A2 right: sales by calendar month, 2023 and 2025 combined, average month = 100
+v2 = vfull[vfull.date.dt.year.isin([2023, 2025])]
+mon = v2.groupby(v2.date.dt.month).revenue.sum()
+mon = mon / mon.mean() * 100
+fig, ax = panel()
+cols = [NEUTRAL] * 10 + [GREEN, GREEN]
+ax.bar(range(12), mon.values, 0.7, color=cols)
+for i, v_ in enumerate(mon.values):
+    ax.text(i, v_ + 3, f"{v_:.0f}", ha="center", fontsize=11, color=INK, fontweight="bold" if i >= 10 else "normal")
+ax.axhline(100, color=INK2, lw=1.2, ls=(0, (3, 3)))
+ax.set_xticks(range(12), ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+              fontsize=12, color=INK)
+ax.set_ylim(0, 225)
+ax.set_ylabel("Sales index (average month = 100)", fontsize=13)
+save_panel(fig, "a2_months.png")

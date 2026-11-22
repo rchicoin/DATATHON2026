@@ -1028,3 +1028,150 @@ pd.Series({
 # **Limitations:** members and repair users choose to take part, so matched comparisons reduce but don't remove
 # selection bias; ARR lags real changes by up to 12 months; the data has no campaign or program running costs
 # beyond repairs and redeemed points.
+
+# %% [markdown]
+# ## 11. Appendix: supporting evidence (slides A1–A3)
+# Every number on the appendix slides is computed here.
+#
+# **A1 · Loyalty: revenue vs profit.** Customers active in both the 12 months before and after the loyalty launch
+# (same population as section 5). Members = joined in the first year. Profit per $100 of sales = profit ÷ sales × 100,
+# where profit already subtracts product cost, repair cost and redeemed points.
+
+# %%
+ap_cols = ["revenue_pre", "profit_pre", "revenue_post", "profit_post"]
+ap_a1 = b.groupby("member")[ap_cols].sum().rename(index={True: "Members", False: "Non-members"})
+ap_a1["profit per $100, before"] = ap_a1["profit_pre"] / ap_a1["revenue_pre"] * 100
+ap_a1["profit per $100, after"] = ap_a1["profit_post"] / ap_a1["revenue_post"] * 100
+ap_a1["change ($ per $100)"] = ap_a1["profit per $100, after"] - ap_a1["profit per $100, before"]
+ap_a1["sales change (%)"] = (ap_a1["revenue_post"] / ap_a1["revenue_pre"] - 1) * 100
+ap_a1[["revenue_pre", "revenue_post"]] /= 1e6
+ap_a1 = ap_a1.rename(columns={"revenue_pre": "sales before ($M)", "revenue_post": "sales after ($M)"})
+ap_a1.drop(columns=["profit_pre", "profit_post"]).loc[["Members", "Non-members"]].round(2)
+
+# %% [markdown]
+# **A1 · Basket size vs distance to the next tier.** Member purchase visits after the launch. Points toward the next
+# tier = points earned in the trailing 365 days (the tier rule in `src/config.py`); distance = points still needed for
+# Silver (600) or Gold (2,000). Basket index = the visit's basket as % of that customer's own average basket, so
+# big and small spenders are compared fairly (100 = their usual).
+
+# %%
+ap_mv = (lines.assign(gross=lines["revenue"].where(lines["row_type"] == C.PURCHASE, 0),
+                      is_buy=lines["row_type"] == C.PURCHASE)
+         .groupby("transaction_id").agg(customer_id=("customer_id", "first"), datetime=("datetime", "first"),
+                                        join_date=("loyalty_join_date", "first"), points=("points_earned", "sum"),
+                                        basket=("gross", "sum"), has_buy=("is_buy", "any")))
+ap_mv = ap_mv.sort_values(["customer_id", "datetime"]).reset_index()
+ap_mv["trailing"] = (ap_mv.set_index("datetime").groupby("customer_id")["points"]
+                     .rolling(f"{C.TIER_WINDOW_DAYS}D", closed="left").sum().fillna(0).values)
+ap_m = ap_mv[ap_mv["has_buy"] & ap_mv["join_date"].notna() & (ap_mv["datetime"] >= ap_mv["join_date"])
+             & (ap_mv["datetime"] >= C.LOYALTY_LAUNCH)].copy()
+ap_m["next_tier"] = np.select([ap_m["trailing"] < C.SILVER_THRESHOLD, ap_m["trailing"] < C.GOLD_THRESHOLD],
+                              [f"Member → Silver ({C.SILVER_THRESHOLD} pts)", f"Silver → Gold ({C.GOLD_THRESHOLD:,} pts)"],
+                              default="Gold")
+ap_m["gap"] = np.where(ap_m["trailing"] < C.SILVER_THRESHOLD, C.SILVER_THRESHOLD - ap_m["trailing"],
+                       C.GOLD_THRESHOLD - ap_m["trailing"])
+ap_m = ap_m[ap_m["next_tier"] != "Gold"]
+ap_m["basket_index"] = ap_m["basket"] / ap_m.groupby("customer_id")["basket"].transform("mean") * 100
+AP_GAPS = ["0–50", "50–100", "100–200", "200–400", "400+"]
+ap_m["gap_bucket"] = pd.cut(ap_m["gap"], [0, 50, 100, 200, 400, np.inf], labels=AP_GAPS, right=False)
+ap_tier = ap_m.groupby(["next_tier", "gap_bucket"], observed=True)["basket_index"].agg(["mean", "size"]).unstack(0)
+print(f"{len(ap_m):,} member purchase visits below Gold")
+ap_tier.round(1)
+
+# %% [markdown]
+# **A2 · Categories and seasons.** (a) Sales by category, March–October 2026 vs March–October 2023, for 18–24 year-olds
+# and shoppers aged 25+ (same months, so seasons don't distort it). (b) Sales by calendar month in the two complete
+# pre- and post-competitor years, 2023 and 2025 combined, as an index (average month = 100), with each month's margin.
+
+# %%
+ap_p = a_p[a_p["mon"].between(3, 10) & a_p["year"].isin([2023, 2026])]
+ap_p = ap_p.assign(grp=np.where(ap_p["age_band"] == "18-24", "Aged 18–24", "Aged 25+"))
+ap_cat = ap_p.groupby(["category", "grp", "year"])["revenue"].sum().unstack("year")
+ap_cat = ((ap_cat[2026] / ap_cat[2023] - 1) * 100).unstack("grp").sort_values("Aged 18–24")
+
+ap_v = visits[visits["date"].dt.year.isin([2023, 2025])]
+ap_month = ap_v.groupby(ap_v["date"].dt.month)[["revenue", "profit"]].sum()
+ap_month["index (average month = 100)"] = ap_month["revenue"] / ap_month["revenue"].mean() * 100
+ap_month["margin (%)"] = ap_month["profit"] / ap_month["revenue"] * 100
+ap_month.index = A_MONTHS
+print(f"November + December share of yearly sales: {ap_month.loc[['Nov', 'Dec'], 'revenue'].sum() / ap_month['revenue'].sum():.1%}; "
+      f"December margin {ap_month.loc['Dec', 'margin (%)']:.0f}% vs {ap_month.loc['Jan':'Sep', 'margin (%)'].mean():.0f}% in Jan–Sep")
+display(ap_cat.round(1))
+ap_month[["index (average month = 100)", "margin (%)"]].round(1).T
+
+# %% [markdown]
+# **A3 · Who brings in our returning-customer sales? (k-means segments, `analysis/d_customers_arr/d8_matching_segments.ipynb`).**
+# Every customer who made a purchase in the last 12 months, clustered on behaviour only: days since last purchase,
+# purchase visits, spend, average basket, share paid with points, return rate, years as a customer, repair use and
+# age (skewed ones log-scaled, all standardised). k = 4: the full notebook compares k = 3–7 by silhouette score; 4 also
+# separates the frequent returners. Segments are named by rules from their profile, so the names survive a re-run.
+
+# %%
+from sklearn.cluster import KMeans
+
+ap_y12 = visits[visits["date"] > C.DATA_END - pd.Timedelta(days=365)]
+ap_buyers = ap_y12.loc[ap_y12["has_purchase"], "customer_id"].unique()
+ap_g = ap_y12[ap_y12["customer_id"].isin(ap_buyers)].groupby("customer_id")
+seg = c_cust.loc[ap_buyers].copy()
+seg["purchase_visits"] = ap_g["has_purchase"].sum()
+seg["spend"] = ap_g["revenue"].sum().clip(lower=0)
+seg["avg_basket"] = seg["spend"] / seg["purchase_visits"]
+seg["points_share"] = (ap_g["redeemed_dollars"].sum() / ap_g["revenue"].sum().where(lambda s: s > 0)).fillna(0).clip(0, 1)
+seg["return_rate"] = ap_g["has_return"].sum() / ap_g.size()
+seg["days_since_purchase"] = (C.DATA_END - visits[visits["has_purchase"]].groupby("customer_id")["date"].max()
+                              .reindex(seg.index)).dt.days
+seg["tenure_years"] = (C.DATA_END - seg["signup_date"]).dt.days / 365
+seg["repair_user"] = seg["used_repair"].fillna(False).astype(int)
+seg["age_num"] = seg["age_band"].map({"18-24": 21, "25-34": 30, "35-44": 40, "45-54": 50, "55+": 60})
+seg["age_num"] = seg["age_num"].fillna(seg["age_num"].median())
+AP_FEATS = ["days_since_purchase", "purchase_visits", "spend", "avg_basket", "points_share", "return_rate",
+            "tenure_years", "repair_user", "age_num"]
+ap_Z = seg[AP_FEATS].astype(float).copy()
+for col in ["days_since_purchase", "purchase_visits", "spend", "avg_basket"]:
+    ap_Z[col] = np.log1p(ap_Z[col])
+seg["segment"] = KMeans(4, n_init=20, random_state=42).fit_predict(StandardScaler().fit_transform(ap_Z))
+
+segments = seg.groupby("segment").agg(
+    customers=("spend", "size"), arr=("arr_12m", "sum"), trips_per_year=("purchase_visits", "mean"),
+    avg_basket=("avg_basket", "mean"), days_since_purchase=("days_since_purchase", "median"),
+    repair_users=("repair_user", "mean"), age_18_24=("age_band", lambda s: (s == "18-24").mean()),
+    return_rate=("return_rate", "mean"))
+names, left = {}, set(segments.index)
+for name, pick in [("Gold regulars", lambda d: d["arr"].idxmax()), ("Frequent returners", lambda d: d["return_rate"].idxmax()),
+                   ("Fading light shoppers", lambda d: d["age_18_24"].idxmax())]:
+    k = pick(segments.loc[sorted(left)])
+    names[k] = name
+    left.discard(k)
+names[left.pop()] = "Occasional big-basket shoppers"
+segments.index = segments.index.map(names)
+AP_ORDER = ["Gold regulars", "Occasional big-basket shoppers", "Fading light shoppers", "Frequent returners"]
+segments = segments.loc[AP_ORDER]
+segments["share of customers (%)"] = segments["customers"] / segments["customers"].sum() * 100
+segments["share of ARR (%)"] = segments["arr"] / segments["arr"].sum() * 100
+segments["use free repairs (%)"] = segments["repair_users"] * 100
+segments[["customers", "share of customers (%)", "share of ARR (%)", "use free repairs (%)", "trips_per_year",
+          "avg_basket", "days_since_purchase", "return_rate"]].round(1)
+
+# %%
+fig, axes = plt.subplots(1, 2, figsize=(13, 4.6))
+ax = axes[0]
+x = np.arange(len(AP_GAPS))
+for tier, colr in zip(ap_tier["mean"].columns, [BLUE, ORANGE]):
+    ax.plot(x, ap_tier["mean"][tier].reindex(AP_GAPS), marker="o", color=colr, label=tier)
+ax.axhline(100, color=INK2, lw=1)
+ax.set_xticks(x, AP_GAPS)
+ax.set_xlabel("Points still needed for the next tier")
+ax.set_ylabel("Basket, % of the customer's usual")
+ax.legend(frameon=False)
+ax.set_title("A1: baskets don't jump just before a tier", loc="left", color=INK, fontsize=12)
+ax = axes[1]
+y = np.arange(len(segments))
+ax.barh(y - 0.2, segments["share of customers (%)"], 0.38, color=GRID, label="Share of customers")
+ax.barh(y + 0.2, segments["share of ARR (%)"], 0.38, color=BLUE, label="Share of ARR")
+ax.set_yticks(y, [f"{n}\n({r:.0f}% use repairs)" for n, r in segments["use free repairs (%)"].items()])
+ax.invert_yaxis()
+ax.xaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
+ax.legend(frameon=False, loc="lower right")
+ax.set_title("A3: a third of customers bring in 80% of ARR", loc="left", color=INK, fontsize=12)
+fig.tight_layout()
+plt.show()
