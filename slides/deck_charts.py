@@ -261,8 +261,8 @@ opts = [("Close free repairs\n(leadership's plan)", -123, 83, NEUTRAL,
          "−$123K to +$83K: about break-even,\nwith more room to lose than to gain"),
         ("Bring points back to\n5% of sales", 0, points_cut / 1e3, GREEN,
          f"$0 to +${points_cut / 1e3:.0f}K, depending on\nhow members respond"),
-        ("Win back half of the\nlost 18–24 shoppers", 155, 195, GREEN,
-         "+$155K to +$195K, before\nthe cost of the offer")]
+        ("Win back half of the\nlost 18–24 shoppers", 154, 195, GREEN,
+         "+$154K to +$195K, before\nthe cost of the offer")]   # summary.ipynb section 9
 fig, ax = plt.subplots(figsize=(14, 6.4))
 ax.grid(axis="y", visible=False)
 ax.grid(axis="x", color=RULE)

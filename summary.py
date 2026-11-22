@@ -11,37 +11,78 @@
 # # Lululime — Should leadership scrap repairs and expand loyalty?
 # Dataverse 2026 · Final notebook. Every output below is saved, so it can be read without running anything.
 #
-# **How to run it yourself.** This notebook uses the team's shared cleaning code (`src/`) and the data files, which
-# live in the project repository: **https://github.com/rchicoin/LuluLime-Datathon-2026**
-# ```
-# git clone https://github.com/rchicoin/LuluLime-Datathon-2026.git
-# cd LuluLime-Datathon-2026
-# pip install -r requirements.txt
-# jupyter lab summary.ipynb        # then Run All (about 5 minutes; section 2 rebuilds the data from the raw CSVs)
-# ```
-# Supporting notebooks for each stream are in `analysis/`, and every chart is in `results/` and `slides/charts/`.
+# **How to run it yourself.** This notebook is self-contained: every cleaning rule, table and model is defined in the
+# cells below. It needs only:
+# 1. **The three case CSVs:** `sales.csv`, `items.csv` and `customers.csv`, in the same folder as this notebook
+#    (a `data/raw/` or `data/` subfolder also works, or set `DATA_DIR` in the setup cell).
+# 2. **Python 3.10+ with:** pandas, numpy, matplotlib, scikit-learn and scipy. If any are missing, run
+#    `pip install pandas numpy matplotlib scikit-learn scipy` first.
 #
-# *For the team:* edit `summary.py`, then regenerate with `jupytext --to notebook summary.py -o summary.ipynb`.
+# Then **Run All** (about 6–7 minutes; the churn-model bootstrap in section 6 takes about two of them). Results are
+# deterministic (fixed random seeds), so a re-run reproduces every number in the deck.
 
 # %% [markdown]
-# ## 1. Problem framing
-# A competitor opened across the street in **March 2024** and targeted younger customers with lower prices.
-# Lululime responded with a loyalty program (Jun 2024), a Pilates campaign (Jan–Mar 2025) and free repairs (Apr 2025).
-# Revenue has since recovered. Leadership credits loyalty and plans to **expand loyalty perks and shut down free repairs**,
-# believing repairs only cost money and cannibalize outerwear sales.
-#
-# We test that plan through two numbers:
-# - **ARR:** revenue from repeat customers (any visit after their signup date) over the trailing 12 months.
-# - **Profit:** revenue − production costs − repair costs − redeemed points ($1 per 20 points).
+# ## 0. Setup: packages, data location and shared definitions
+# All dates, thresholds and business rules used anywhere in the notebook are set once here.
 
 # %%
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as mtick
+import numpy as np
 import pandas as pd
 
-from src import config as C
-from src.metrics import load
+# Where the three case CSVs are: the first folder below that contains sales.csv is used.
+DATA_DIR = next((d for d in [Path("."), Path("data/raw"), Path("data")] if (d / "sales.csv").exists()), None)
+assert DATA_DIR is not None, ("Put sales.csv, items.csv and customers.csv next to this notebook "
+                              "(or in data/raw/), or set DATA_DIR to their folder.")
+print(f"Reading the case data from: {DATA_DIR.as_posix()}/ (relative to this notebook)")
+
+
+class C:
+    """Shared definitions: data window, key dates, loyalty rules, profit rules, customer definitions."""
+    SALES_CSV, ITEMS_CSV, CUSTOMERS_CSV = DATA_DIR / "sales.csv", DATA_DIR / "items.csv", DATA_DIR / "customers.csv"
+
+    # Data window
+    DATA_START = pd.Timestamp("2022-11-01")    # first sales row
+    DATA_END = pd.Timestamp("2026-10-31")      # last sales row
+    AS_OF_DATE = DATA_END                      # "today" for churn and trailing-12-month metrics
+
+    # Key dates
+    COMPETITOR_OPEN_DAY = pd.Timestamp("2024-03-15")   # the opening day (day-level work and charts)
+    COMPETITOR_OPEN = pd.Timestamp("2024-03-01")       # the month it opened (monthly analysis)
+    LOYALTY_LAUNCH = pd.Timestamp("2024-06-01")
+    PILATES_START = pd.Timestamp("2025-01-06")
+    PILATES_END = pd.Timestamp("2025-03-31")
+    REPAIRS_LAUNCH = pd.Timestamp("2025-04-01")
+    WEBSITE_LAUNCH = pd.Timestamp("2025-11-17")
+    NEW_MANAGER = pd.Timestamp("2026-02-02")
+    EVENTS = {"competitor_open": COMPETITOR_OPEN_DAY, "loyalty_launch": LOYALTY_LAUNCH,
+              "pilates_start": PILATES_START, "pilates_end": PILATES_END, "repairs_launch": REPAIRS_LAUNCH,
+              "website_launch": WEBSITE_LAUNCH, "new_manager": NEW_MANAGER}
+
+    # Loyalty
+    POINTS_PER_DOLLAR_REDEEMED = 20            # 20 points = $1 off
+    SILVER_THRESHOLD, GOLD_THRESHOLD = 600, 2000   # points earned in the trailing 365 days
+    TIER_WINDOW_DAYS = 365
+    PRE_LOYALTY = "Pre-loyalty"                # blank tier before the loyalty launch
+    TIER_ORDER = [PRE_LOYALTY, "Non-member", "Member", "Silver", "Gold"]
+    TIER_RANK = {t: i for i, t in enumerate(TIER_ORDER)}
+
+    # Profit = revenue − production cost − repair cost − redeemed points ($)
+    RETURN_COST_REVERSES = True                # a returned item's production cost is reversed with its revenue
+    REPAIR_ITEMS = {"R01": "outerwear", "R02": "activewear"}   # cost $45 / $18, price $0
+
+    # Customer definitions
+    CHURN_DAYS = 180                           # churned = no visit in the last 180 days
+    ARR_WINDOW_MONTHS = 12                     # ARR = repeat-customer revenue over the trailing 12 months
+
+    # Row types and interests
+    PURCHASE, RETURN, DROPOFF, PICKUP = "Purchase", "Return", "Repair Drop-off", "Repair Pickup"
+    INTERESTS = ["Run", "Yoga", "Pilates", "Outdoor", "Lifestyle"]
+
 
 # Shared chart style (validated palette: blue / orange; recessive grid)
 BLUE, ORANGE = "#2a78d6", "#eb6834"
@@ -70,26 +111,223 @@ def mark_events(ax, ymax):
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %Y"))
 
 # %% [markdown]
-# ## 2. Data & methodology
-# All cleaning and joining lives in `src/` (rules in `docs/data_notes.md`, decisions in `docs/decisions_log.md`):
-# 1. **Clean:** drop 1,016 exact duplicate sales rows; blank tier before the loyalty launch = "Pre-loyalty"; blank points = 0.
-# 2. **Join:** sales → items on `item_id`, → customers on `customer_id` (left joins, one-to-one lookup check).
-# 3. **Baskets:** lines grouped by `transaction_id` into visits; `points_redeemed` summed per transaction.
-# 4. **Metrics:** profit per line; repair cost at drop-off only (unpicked drop-offs still count); returns and repair
-#    pickups linked to their original on `original_transaction_id` + `item_id`.
+# ## 1. Problem framing
+# A competitor opened across the street in **March 2024** and targeted younger customers with lower prices.
+# Lululime responded with a loyalty program (Jun 2024), a Pilates campaign (Jan–Mar 2025) and free repairs (Apr 2025).
+# Revenue has since recovered. Leadership credits loyalty and plans to **expand loyalty perks and shut down free repairs**,
+# believing repairs only cost money and cannibalize outerwear sales.
 #
-# The build below reruns every step from the raw CSVs and prints the integrity checks.
+# We test that plan through two numbers:
+# - **ARR:** revenue from repeat customers (any visit after their signup date) over the trailing 12 months.
+# - **Profit:** revenue − production costs − repair costs − redeemed points ($1 per 20 points).
+
+# %% [markdown]
+# ## 2. Data & methodology
+# Every cleaning and joining step is defined below and run from the raw CSVs:
+# 1. **Clean:** read IDs as text; drop exact duplicate sales rows (1,016); blank tier before the loyalty launch =
+#    "Pre-loyalty" (not "Non-member"); blank points = 0; split customer interests into yes/no columns.
+# 2. **Join:** sales → items on `item_id`, → customers on `customer_id` (left joins, checked many-to-one). One row per
+#    sales line.
+# 3. **Profit per line:** revenue = quantity × price paid (returns are negative); production cost on purchases and
+#    returns; repair cost at **drop-off only** (pickups cost $0, unpicked drop-offs still count); redeemed points at
+#    $1 per 20 points.
+# 4. **Tables:** visits (one row per transaction; `points_redeemed` summed per transaction, `points_balance_after`
+#    never summed), customers (churn, ARR, repair use), customer-months (rolling 12-month ARR), and links (returns →
+#    purchases and repair pickups → drop-offs, matched on `original_transaction_id` + `item_id`).
+#
+# The integrity checks print below; every one must pass.
 
 # %%
-from src.tables import build_all
-_ = build_all(write=False)
+ID_COLS = {"transaction_id": str, "customer_id": str, "item_id": str, "original_transaction_id": str}
 
-# %%
-lines = load()                      # one row per sales line (the shared, cleaned, joined table)
-visits = load("visits")             # one row per transaction (basket)
-customers = load("customers")       # one row per customer: churn, ARR, repair use, membership
-customer_month = load("customer_month")
-print(f"{len(lines):,} lines · {len(visits):,} visits · {len(customers):,} customers")
+
+def read_raw():
+    """Read the raw CSVs with IDs as text. No cleaning."""
+    sales = pd.read_csv(C.SALES_CSV, dtype={**ID_COLS, "tier_at_purchase": str, "notes": str})
+    items = pd.read_csv(C.ITEMS_CSV, dtype={"item_id": str})
+    customers = pd.read_csv(C.CUSTOMERS_CSV, dtype={"customer_id": str})
+    return sales, items, customers
+
+
+def clean_sales(sales):
+    s = sales.drop_duplicates(keep="first").copy()            # exact double entries
+    s["date"] = pd.to_datetime(s["date"])
+    s["datetime"] = pd.to_datetime(s["date"].dt.strftime("%Y-%m-%d") + " " + s["time"])
+    pre = s["date"] < C.LOYALTY_LAUNCH                        # blank tier before launch = Pre-loyalty
+    s.loc[pre & s["tier_at_purchase"].isna(), "tier_at_purchase"] = C.PRE_LOYALTY
+    assert s["tier_at_purchase"].notna().all(), "blank tier after loyalty launch"
+    for col in ["points_earned", "points_redeemed", "points_balance_after"]:
+        s[col] = s[col].fillna(0)                             # blank points = 0
+    notes = s["notes"].str.strip().str.lower().str.replace(r"\s+", " ", regex=True)
+    s["notes"] = notes.mask(notes == "")
+    return s
+
+
+def clean_customers(customers):
+    c = customers.copy()
+    c["signup_date"] = pd.to_datetime(c["signup_date"])
+    c["loyalty_join_date"] = pd.to_datetime(c["loyalty_join_date"])
+    c["age_band"] = c["age_band"].fillna("Unknown")
+    c["home_area"] = c["home_area"].fillna("Unknown")
+    split = c["interests"].fillna("").str.split(";")
+    for name in C.INTERESTS:
+        c[f"interest_{name.lower()}"] = split.apply(lambda xs, n=name: int(n in xs))
+    c["is_member"] = c["loyalty_join_date"].notna()
+    return c
+
+
+def build_lines(sales, items, customers):
+    """sales LEFT JOIN items LEFT JOIN customers (many-to-one), plus revenue, costs and profit per line."""
+    df = sales.merge(items, on="item_id", how="left", validate="many_to_one")
+    df = df.merge(customers, on="customer_id", how="left", validate="many_to_one")
+    rt = df["row_type"]
+    df["revenue"] = df["quantity"] * df["unit_price_paid"]                 # returns are negative
+    prod = df["quantity"] * df["production_cost"]
+    if not C.RETURN_COST_REVERSES:
+        prod = prod.where(rt != C.RETURN, 0.0)
+    df["production_cost_amt"] = prod.where(rt.isin([C.PURCHASE, C.RETURN]), 0.0)
+    df["repair_cost_amt"] = (df["quantity"] * df["production_cost"]).where(rt == C.DROPOFF, 0.0)   # drop-off only
+    df["redeemed_dollars"] = df["points_redeemed"] / C.POINTS_PER_DOLLAR_REDEEMED
+    df["profit"] = df["revenue"] - df["production_cost_amt"] - df["repair_cost_amt"] - df["redeemed_dollars"]
+    df["is_repeat_visit"] = df["date"] > df["signup_date"]
+    df["month"] = df["date"].dt.to_period("M").dt.to_timestamp()
+    return df
+
+
+def build_visits(lines):
+    """One row per transaction."""
+    v = lines.groupby("transaction_id", sort=False).agg(
+        customer_id=("customer_id", "first"), datetime=("datetime", "first"), date=("date", "first"),
+        month=("month", "first"), signup_date=("signup_date", "first"), tier=("tier_at_purchase", "first"),
+        n_lines=("item_id", "size"), units=("quantity", "sum"), revenue=("revenue", "sum"),
+        production_cost=("production_cost_amt", "sum"), repair_cost=("repair_cost_amt", "sum"),
+        points_earned=("points_earned", "sum"),
+        points_redeemed=("points_redeemed", "sum"),                 # summed per transaction
+        points_balance_after=("points_balance_after", "first"),     # never summed
+        redeemed_dollars=("redeemed_dollars", "sum"), profit=("profit", "sum"),
+    ).reset_index()
+    for rt, col in [(C.PURCHASE, "has_purchase"), (C.RETURN, "has_return"),
+                    (C.DROPOFF, "has_dropoff"), (C.PICKUP, "has_pickup")]:
+        v[col] = v["transaction_id"].isin(lines.loc[lines["row_type"] == rt, "transaction_id"])
+    v["is_repeat_visit"] = v["date"] > v["signup_date"]
+    return v.sort_values("datetime").reset_index(drop=True)
+
+
+def build_customers(customers, visits):
+    """One row per customer: visits, revenue, ARR, repair use, highest tier, churn."""
+    since_12m = C.AS_OF_DATE - pd.DateOffset(months=C.ARR_WINDOW_MONTHS)
+    v = visits.assign(
+        rev_12m=visits["revenue"].where(visits["date"] > since_12m, 0.0),
+        arr_12m=visits["revenue"].where((visits["date"] > since_12m) & visits["is_repeat_visit"], 0.0),
+        tier_rank=visits["tier"].map(C.TIER_RANK))
+    agg = v.groupby("customer_id").agg(
+        first_visit=("date", "min"), last_visit=("date", "max"), n_visits=("transaction_id", "size"),
+        n_repeat_visits=("is_repeat_visit", "sum"), revenue_total=("revenue", "sum"), profit_total=("profit", "sum"),
+        revenue_12m=("rev_12m", "sum"), arr_12m=("arr_12m", "sum"), redeemed_dollars_total=("redeemed_dollars", "sum"),
+        n_repair_dropoffs=("has_dropoff", "sum"), n_returns=("has_return", "sum"), max_tier_rank=("tier_rank", "max"))
+    agg = agg.join(v[v["has_dropoff"]].groupby("customer_id")["date"].min().rename("first_repair_date"))
+    agg["used_repair"] = agg["n_repair_dropoffs"] > 0
+    agg["max_tier"] = agg["max_tier_rank"].map(dict(enumerate(C.TIER_ORDER)))
+    agg = agg.drop(columns="max_tier_rank")
+    agg["days_since_last_visit"] = (C.AS_OF_DATE - agg["last_visit"]).dt.days
+    agg["churned"] = agg["days_since_last_visit"] > C.CHURN_DAYS
+    out = customers.merge(agg, left_on="customer_id", right_index=True, how="left", validate="one_to_one")
+    out["has_sales"] = out["n_visits"].notna()
+    return out
+
+
+def build_customer_month(visits):
+    """One row per customer per month, from their first visit to the end of the data, with rolling 12-month ARR."""
+    v = visits.assign(repeat_revenue=visits["revenue"].where(visits["is_repeat_visit"], 0.0))
+    m = v.groupby(["customer_id", "month"]).agg(
+        n_visits=("transaction_id", "size"), revenue=("revenue", "sum"), repeat_revenue=("repeat_revenue", "sum"),
+        profit=("profit", "sum"), last_visit_in_month=("date", "max"))
+    m = m.join(v.sort_values("datetime").groupby(["customer_id", "month"])["tier"].last().rename("tier_last_seen"))
+    end = C.DATA_END.to_period("M").to_timestamp()
+    first = v.groupby("customer_id")["month"].min()
+    panel = pd.DataFrame({"customer_id": first.index,
+                          "month": [pd.date_range(f, end, freq="MS") for f in first.values]}).explode("month")
+    panel["month"] = pd.to_datetime(panel["month"])
+    cm = panel.merge(m.reset_index(), on=["customer_id", "month"], how="left")
+    cm = cm.sort_values(["customer_id", "month"]).reset_index(drop=True)
+    for col in ["n_visits", "revenue", "repeat_revenue", "profit"]:
+        cm[col] = cm[col].fillna(0)
+    cm["n_visits"] = cm["n_visits"].astype(int)
+    cm["active"] = cm["n_visits"] > 0
+    grp = cm.groupby("customer_id", sort=False)
+    cm["tier_last_seen"] = grp["tier_last_seen"].ffill()        # tier is only recorded at visits
+    cm["arr_12m"] = (grp["repeat_revenue"].rolling(C.ARR_WINDOW_MONTHS, min_periods=1).sum()
+                     .reset_index(level=0, drop=True))
+    last_visit = grp["last_visit_in_month"].ffill()
+    cm["days_since_last_visit"] = (cm["month"] + pd.offsets.MonthEnd(0) - last_visit).dt.days
+    cm["churned"] = cm["days_since_last_visit"] > C.CHURN_DAYS
+    return cm.drop(columns="last_visit_in_month")
+
+
+def build_links(lines):
+    """Returns → their purchase and repair pickups → their drop-off, matched on original_transaction_id + item_id."""
+    cols = ["transaction_id", "item_id", "customer_id", "date", "row_type", "original_transaction_id",
+            "unit_price_paid", "notes"]
+    out = []
+    for child, parent, kind in [(C.RETURN, C.PURCHASE, "return"), (C.PICKUP, C.DROPOFF, "repair")]:
+        ch = lines.loc[lines["row_type"] == child, cols].copy()
+        par = (lines.loc[lines["row_type"] == parent, ["transaction_id", "item_id", "date"]]
+               .drop_duplicates(["transaction_id", "item_id"])
+               .rename(columns={"transaction_id": "original_transaction_id", "date": "original_date"}))
+        ch = ch.merge(par, on=["original_transaction_id", "item_id"], how="left", validate="many_to_one")
+        ch["link_type"] = kind
+        out.append(ch)
+    links = pd.concat(out, ignore_index=True)
+    links["resolved"] = links["original_date"].notna()
+    links["days_between"] = (links["date"] - links["original_date"]).dt.days
+    return links
+
+
+def run_checks(raw_sales, sales, t):
+    """Integrity checks: row counts, joins, revenue tie-out, cost rules, links."""
+    lines_, visits_, cust_, cm_, links_ = (t[k] for k in ["lines", "visits", "customers", "customer_month", "links"])
+    rev_raw = (sales["quantity"] * sales["unit_price_paid"]).sum()
+    checks = {
+        f"duplicates dropped: {len(raw_sales) - len(sales):,} of {len(raw_sales):,} raw sales rows": True,
+        "row count unchanged by the joins": len(lines_) == len(sales),
+        "every line matched an item and a customer": bool(lines_["item_name"].notna().all()
+                                                          and lines_["signup_date"].notna().all()),
+        f"revenue ties out across lines / visits / customer-months (${rev_raw:,.0f})":
+            bool(np.isclose(lines_["revenue"].sum(), rev_raw) and np.isclose(visits_["revenue"].sum(), rev_raw)
+                 and np.isclose(cm_["revenue"].sum(), rev_raw)),
+        "no cost on repair pickup rows": bool(lines_.loc[lines_["row_type"] == C.PICKUP,
+                                                         ["production_cost_amt", "repair_cost_amt"]].abs().sum().sum() == 0),
+        "repairs carry repair cost only": bool((lines_.loc[lines_["row_type"].isin([C.DROPOFF, C.PICKUP]),
+                                                           "production_cost_amt"] == 0).all()),
+    }
+    for kind, label in [("return", "returns → purchases"), ("repair", "pickups → drop-offs")]:
+        lk = links_[links_["link_type"] == kind]
+        has_id = lk["original_transaction_id"].notna()
+        checks[f"{label}: {int(lk.loc[has_id, 'resolved'].sum()):,}/{int(has_id.sum()):,} with an original ID link"] = \
+            bool(lk.loc[has_id, "resolved"].all())
+        checks[f"{label}: never before the original"] = bool((lk["days_between"].dropna() >= 0).all())
+    for msg, ok in checks.items():
+        print(f"  [{'PASS' if ok else 'FAIL'}] {msg}")
+    print(f"{len(lines_):,} lines · {len(visits_):,} visits · {int(cust_['has_sales'].sum()):,} customers with sales · "
+          f"{len(cm_):,} customer-months · {len(links_):,} links")
+    assert all(checks.values()), "an integrity check failed"
+
+
+raw_sales, raw_items, raw_customers = read_raw()
+_sales, _customers = clean_sales(raw_sales), clean_customers(raw_customers)
+lines = build_lines(_sales, raw_items, _customers)          # one row per sales line (cleaned and joined)
+visits = build_visits(lines)                                # one row per transaction (basket)
+customers = build_customers(_customers, visits)             # one row per customer
+customer_month = build_customer_month(visits)               # one row per customer per month
+TABLES = {"lines": lines, "visits": visits, "customers": customers, "customer_month": customer_month,
+          "links": build_links(lines)}
+run_checks(raw_sales, _sales, TABLES)
+
+
+def load(name="lines"):
+    """A fresh copy of one of the tables built above."""
+    return TABLES[name].copy()
+
 
 # %% [markdown]
 # ## 3. ARR over time (Stream D, slide 4)
@@ -350,7 +588,7 @@ plt.show()
 #   membership once engagement is controlled (odds ratio 0.99; a weak test, since 93% of revenue is from members).
 # - **The cost of points has levelled off at a structural level:** $797K since launch (5.0% of revenue), $413K in the last 12 months (5.9%),
 #   up from 2.4% of revenue in the first full quarter, flat at 5.5–6.5% since mid-2025. Balances aren't building up
-#   (only $127K outstanding); the rise came from tier mix (Gold went from 4% to 69% of member spend). Each extra
+#   (only $127K outstanding); the rise came from tier mix (Gold went from 3% to 69% of member spend; computed in section 9). Each extra
 #   0.25 pts per $ would cost about $81K a year (decision #24).
 # - **Purchases paid mostly with points are returned 2.4× as often** (24% vs ~10%).
 # - **Being close to the next tier doesn't change spending** (baskets $156–$164 at every distance), so the tier
@@ -726,8 +964,8 @@ c_before = c_sales["date"].between(C.REPAIRS_LAUNCH - pd.DateOffset(years=1), C.
 c_after = c_sales["date"].between(C.REPAIRS_LAUNCH, C.REPAIRS_LAUNCH + pd.DateOffset(years=1) - pd.Timedelta(days=1))
 c_ow = c_sales[c_sales["category"] == "Outerwear"]
 c_grp = c_ow["customer_id"].map(c_cust["used_repair"]).map({True: "Repair users", False: "Never used repairs"})
-c_ow_split = pd.DataFrame({"Before ($K)": c_ow[c_before].groupby(c_grp)["revenue"].sum() / 1e3,
-                           "After ($K)": c_ow[c_after].groupby(c_grp)["revenue"].sum() / 1e3})
+c_ow_split = pd.DataFrame({"Before ($K)": c_ow[c_before[c_ow.index]].groupby(c_grp)["revenue"].sum() / 1e3,
+                           "After ($K)": c_ow[c_after[c_ow.index]].groupby(c_grp)["revenue"].sum() / 1e3})
 c_ow_split.loc["All customers"] = c_ow_split.sum()
 c_ow_split["Change (%)"] = (c_ow_split["After ($K)"] / c_ow_split["Before ($K)"] - 1) * 100
 c_ow_split.round(0)
@@ -932,8 +1170,41 @@ plt.show()
 # **(a) Would a leggings discount win back 18–24s?** In the year before the competitor (Mar 2023 – Feb 2024): the
 # share of each age group's spending made at sale prices (Black Friday, Boxing Week), and the share spent on leggings.
 # Then the yearly cost of a storewide leggings discount (last 12 months of leggings sales × discount), against the
-# most that winning back half the lost young shoppers is worth: 912 lost 18–24 buyers × $429 profit each × 50% ≈
-# **$195K a year before the cost of the offer** (low end $155K; decision #23, from `analysis/a_competitor/`).
+# most that winning back half the lost young shoppers is worth.
+#
+# **What winning back young shoppers is worth.** Compare 18–24 buyers in the year before the competitor (Mar 2023 –
+# Feb 2024) with the latest 12 months (Nov 2025 – Oct 2026). Three ways to value winning back **half** of what was lost,
+# each before the cost of any offer: (1) lost buyers × today's profit per young buyer (the headline, upper end);
+# (2) lost 18–24 revenue × today's 18–24 margin; (3) lost 18–24 ARR (Feb 2024 → Oct 2026) × today's margin. The range
+# runs from the lowest to the highest of the three.
+
+# %%
+def r_year(start, end):
+    w = visits[(visits["date"] >= start) & (visits["date"] < end)
+               & (visits["customer_id"].map(c_cust["age_band"]) == "18-24")]
+    buyers = w.loc[w["has_purchase"], "customer_id"].nunique()
+    return pd.Series({"revenue": w["revenue"].sum(), "profit": w["profit"].sum(), "buyers": buyers,
+                      "profit per buyer": w["profit"].sum() / buyers})
+
+
+r_young = pd.DataFrame({"Year before competitor (Mar 2023 – Feb 2024)": r_year("2023-03-01", "2024-03-01"),
+                        "Latest 12 months (Nov 2025 – Oct 2026)": r_year("2025-11-01", "2026-11-01")}).T
+r_then, r_now = r_young.iloc[0], r_young.iloc[1]
+r_margin_now = r_now["profit"] / r_now["revenue"]
+r_arr_young = customer_month[customer_month["customer_id"].map(c_cust["age_band"]) == "18-24"].groupby("month")["arr_12m"].sum()
+r_lost_arr = r_arr_young[pd.Timestamp("2024-02-01")] - r_arr_young[pd.Timestamp("2026-10-01")]
+r_win = pd.Series({
+    "(1) lost buyers × today's profit per buyer × 50%": (r_then["buyers"] - r_now["buyers"]) * r_now["profit per buyer"] * 0.5,
+    "(2) lost revenue × today's margin × 50%": (r_then["revenue"] - r_now["revenue"]) * r_margin_now * 0.5,
+    "(3) lost ARR × today's margin × 50%": r_lost_arr * r_margin_now * 0.5,
+}, name="profit a year ($)")
+R_WIN_BACK_LOW, R_WIN_BACK_HIGH, R_PER_SHOPPER = r_win.min(), r_win.max(), r_now["profit per buyer"]
+print(f"Lost 18–24 buyers: {r_then['buyers'] - r_now['buyers']:,.0f} · profit per young buyer today: ${R_PER_SHOPPER:,.0f} · "
+      f"18–24 margin today: {r_margin_now:.1%} · lost 18–24 ARR: ${r_lost_arr:,.0f}")
+print(f"Win back half the lost young shoppers: ${R_WIN_BACK_LOW / 1e3:,.0f}K to ${R_WIN_BACK_HIGH / 1e3:,.0f}K profit a year, "
+      "before the cost of the offer")
+display(r_young.round(0))
+r_win.round(0)
 
 # %%
 r_buys = lines[lines["row_type"] == C.PURCHASE].copy()
@@ -950,12 +1221,11 @@ display(r_sens)
 r_lg = r_buys[(r_buys["category"] == "Leggings") & (r_buys["date"] > C.DATA_END - pd.Timedelta(days=365))]
 r_lg_rev = r_lg["revenue"].sum()
 r_lg_cost = (r_lg["quantity"] * r_lg["production_cost"]).sum()
-R_WIN_BACK_LOW, R_WIN_BACK_HIGH, R_PER_SHOPPER = 155_000, 195_000, 429     # decision #23
 r_price = pd.DataFrame({f"{d:.0%} off all leggings": {
     "yearly cost ($K)": r_lg_rev * d / 1e3,
     "leggings margin after (%)": (r_lg_rev * (1 - d) - r_lg_cost) / (r_lg_rev * (1 - d)) * 100,
     "young shoppers won back to break even": r_lg_rev * d / R_PER_SHOPPER,
-    "cost vs max win-back value ($195K)": "below" if r_lg_rev * d < R_WIN_BACK_HIGH else "above",
+    f"cost vs max win-back value (${R_WIN_BACK_HIGH / 1e3:,.0f}K)": "below" if r_lg_rev * d < R_WIN_BACK_HIGH else "above",
 } for d in [0.10, 0.15, 0.20]}).T
 print(f"Leggings, last 12 months: ${r_lg_rev:,.0f} of sales, margin {(r_lg_rev - r_lg_cost) / r_lg_rev:.0%}. "
       f"18–24 share of leggings sales: {r_lg.loc[r_lg['age_band'] == '18-24', 'revenue'].sum() / r_lg_rev:.0%}")
@@ -996,6 +1266,64 @@ pd.Series({
 # refund policy is unconfirmed). The 50% cap is worth **testing** to reduce
 # points-funded returns, but it won't lower the structural cost of points. To lower that cost, test the **earn rate**
 # (each 0.25 pts per $ ≈ $81K a year) or the **Gold-tier threshold** (Gold is 69% of member spend).
+
+# %% [markdown]
+# ### Headline numbers quoted on the slides
+# The remaining figures on the main slides, each computed from the tables above.
+# - **ARR:** Feb 2024 (the last full month before the competitor) vs Oct 2026, for everyone and for 18–24s.
+# - **Returning customers, visits and spend per visit:** repeat purchase visits in the year before the competitor
+#   (Mar 2023 – Feb 2024) vs the last 12 months (Nov 2025 – Oct 2026). Twelve-month windows, so seasons cancel.
+#   Purchase visits only (repair trips bring in $0 and didn't exist before April 2025).
+# - **Points:** redeemed in the last 12 months; what bringing redemptions back to 5% of sales would save if members
+#   kept spending the same (the upper end; $0 if they cut spending in step); the cost of each extra 0.25 points per
+#   dollar on members' net sales (after returns); points still unredeemed; Gold's share of member spending (first and last full quarters).
+# - **Repair users:** share who have reached Gold, among customers with ARR today.
+
+# %%
+h_arr = customer_month.groupby("month")["arr_12m"].sum()
+h_feb24, h_oct26 = pd.Timestamp("2024-02-01"), pd.Timestamp("2026-10-01")
+
+h_rv = visits[visits["is_repeat_visit"] & visits["has_purchase"]]
+
+
+def h_window(a, b):
+    w = h_rv[(h_rv["date"] >= a) & (h_rv["date"] < b)]
+    return pd.Series({"customers": w["customer_id"].nunique(), "visits": len(w), "revenue": w["revenue"].sum()})
+
+
+h_pre, h_now = h_window("2023-03-01", "2024-03-01"), h_window("2025-11-01", "2026-11-01")
+
+h_last12 = visits[visits["date"] > C.DATA_END - pd.Timedelta(days=365)]
+h_redeemed, h_rev12 = h_last12["redeemed_dollars"].sum(), h_last12["revenue"].sum()
+h_member_sales = h_last12.loc[h_last12["tier"].isin(["Member", "Silver", "Gold"]), "revenue"].sum()   # net of returns
+h_balance = (lines[lines["tier_at_purchase"].isin(["Member", "Silver", "Gold"])].sort_values("datetime")
+             .groupby("customer_id")["points_balance_after"].last().sum() / C.POINTS_PER_DOLLAR_REDEEMED)
+h_mem = visits[visits["tier"].isin(["Member", "Silver", "Gold"])]
+h_gold = (h_mem[h_mem["tier"] == "Gold"].groupby(h_mem["date"].dt.to_period("Q"))["revenue"].sum()
+          / h_mem.groupby(h_mem["date"].dt.to_period("Q"))["revenue"].sum() * 100)
+h_arr_now = customers[customers["arr_12m"] > 0]
+h_gold_rep = h_arr_now.groupby("used_repair")["max_tier"].apply(lambda s: (s == "Gold").mean() * 100)
+
+pd.Series({
+    "ARR Feb 2024 ($M)": h_arr[h_feb24] / 1e6,
+    "ARR Oct 2026 ($M)": h_arr[h_oct26] / 1e6,
+    "ARR change, Feb 2024 → Oct 2026 (%)": (h_arr[h_oct26] / h_arr[h_feb24] - 1) * 100,
+    "18–24 ARR change, Feb 2024 → Oct 2026 (%)": (r_arr_young[h_oct26] / r_arr_young[h_feb24] - 1) * 100,
+    "returning customers, last 12 months vs year before competitor (%)": (h_now["customers"] / h_pre["customers"] - 1) * 100,
+    "purchase visits per returning customer (%)": ((h_now["visits"] / h_now["customers"])
+                                                   / (h_pre["visits"] / h_pre["customers"]) - 1) * 100,
+    "spend per visit (%)": ((h_now["revenue"] / h_now["visits"]) / (h_pre["revenue"] / h_pre["visits"]) - 1) * 100,
+    "points redeemed, last 12 months ($K)": h_redeemed / 1e3,
+    "points redeemed, % of sales, last 12 months": h_redeemed / h_rev12 * 100,
+    "saving if points went back to 5% of sales, upper end ($K)": (h_redeemed - 0.05 * h_rev12) / 1e3,
+    "cost of each extra 0.25 points per $ on members' net sales ($K a year)":
+        h_member_sales * 0.25 / C.POINTS_PER_DOLLAR_REDEEMED / 1e3,
+    "points still unredeemed ($K)": h_balance / 1e3,
+    f"Gold share of member spending, {h_gold.index[1]} (%)": h_gold.iloc[1],
+    f"Gold share of member spending, {h_gold.index[-2]} (%)": h_gold.iloc[-2],
+    "repair users with ARR who reached Gold (%)": h_gold_rep[True],
+    "other customers with ARR who reached Gold (%)": h_gold_rep[False],
+}).round(1)
 
 # %% [markdown]
 # ## 10. Recommendation, KPIs & risks (Stream D, slides 9-10)
@@ -1050,7 +1378,7 @@ ap_a1.drop(columns=["profit_pre", "profit_post"]).loc[["Members", "Non-members"]
 
 # %% [markdown]
 # **A1 · Basket size vs distance to the next tier.** Member purchase visits after the launch. Points toward the next
-# tier = points earned in the trailing 365 days (the tier rule in `src/config.py`); distance = points still needed for
+# tier = points earned in the trailing 365 days (the tier rule in the setup cell); distance = points still needed for
 # Silver (600) or Gold (2,000). Basket index = the visit's basket as % of that customer's own average basket, so
 # big and small spenders are compared fairly (100 = their usual).
 
